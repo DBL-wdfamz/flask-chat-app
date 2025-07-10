@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>用户管理</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f7fa;
+      padding: 40px;
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    table {
+      margin: auto;
+      border-collapse: collapse;
+      width: 60%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 12px;
+      text-align: center;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    a {
+      color: red;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<h2>管理员后台 - 用户列表</h2>
+<table>
+  <tr>
+    <th>用户名</th>
+    <th>是否管理员</th>
+    <th>操作</th>
+  </tr>
+  {% for name, info in users.items() %}
+    <tr>
+      <td>{{ name }}</td>
+      <td>{{ '是' if info.is_admin else '否' }}</td>
+      <td>
+        {% if name != 'admin' %}
+          <a href="{{ url_for('delete_user', username=name) }}">删除</a>
+        {% else %}
+          -
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+</table>
+</body>
+</html>
