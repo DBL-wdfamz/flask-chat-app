@@ -40,7 +40,7 @@
     #chatbox {
       flex: 1;
       padding: 10px;
-      overflow-y: auto;
+      overflow-y: scroll;
       background-color: #f7f9fb;
     }
 
@@ -49,6 +49,7 @@
       padding: 10px 15px;
       border-radius: 15px;
       max-width: 75%;
+      clear: both;
       word-break: break-word;
     }
 
@@ -124,12 +125,10 @@
         font-size: 16px;
         padding: 10px;
       }
-
       .chat-input {
         flex-direction: column;
         align-items: stretch;
       }
-
       #message, button, input[type="file"] {
         width: 100%;
         box-sizing: border-box;
@@ -160,19 +159,7 @@
   const chatbox = document.getElementById('chatbox');
   const username = "{{ username }}";
 
-  // 缓存消息避免重复渲染
-  const messageCache = new Set();
-
-  socket.off('receive_message');
   socket.on('receive_message', function(data) {
-    const key = data.username + '|' + data.message;
-    if (messageCache.has(key)) return;
-    messageCache.add(key);
-    if (messageCache.size > 100) {
-      const first = messageCache.values().next().value;
-      messageCache.delete(first);
-    }
-
     const msg = document.createElement('div');
     msg.classList.add('message');
     msg.classList.add(data.username === username ? 'mine' : 'other');
@@ -185,7 +172,7 @@
     const input = document.getElementById('message');
     const msg = input.value.trim();
     if (msg !== '') {
-      socket.emit('send_message', { message: msg });
+      socket.emit('send_message', {message: msg});
       input.value = '';
     }
   }
