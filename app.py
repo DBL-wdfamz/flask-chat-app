@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit
 import os
 
@@ -6,19 +6,42 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 socketio = SocketIO(app)
 
-chat_history = []  # 全局消息记录
-MAX_HISTORY = 100  # 最多保存100条消息
+# 模拟用户数据库（仅在内存中）
+users = {
+    'admin': {'password': 'admin123', 'is_admin': True}  # 默认管理员账户
+}
 
+chat_history = []
+MAX_HISTORY = 100
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def index():
+    return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')
-        if username:
+        username = request.form['username']
+        password = request.form['password']
+        user = users.get(username)
+        if user and user['password'] == password:
             session['username'] = username
+            session['is_admin'] = user.get('is_admin', False)
             return redirect(url_for('chat'))
+        else:
+            return render_template('login.html', error="用户名或密码错误")
     return render_template('login.html')
 
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username in users:
+            return render_template('register.html', error="用户名已存在")
+        users[username] = {'password': password, 'is_admin': False}
+        return redirect(url_for('login'))
+    return render_template('register.html')
 
 @app.route('/chat')
 def chat():
@@ -26,27 +49,33 @@ def chat():
         return redirect(url_for('login'))
     return render_template('chat.html', username=session['username'])
 
+@app.route('/admin')
+def admin():
+    if not session.get('is_admin'):
+        return "无权限访问"
+    return render_template('admin.html', users=users)
+
+@app.route('/delete_user/<username>')
+def delete_user(username):
+    if not session.get('is_admin'):
+        return "无权限操作"
+    if username != 'admin':
+        users.pop(username, None)
+    return redirect(url_for('admin'))
 
 @socketio.on('connect')
 def handle_connect():
-    # 每个新用户连接时，发送历史聊天记录
     for msg in chat_history:
         emit('receive_message', msg)
-
 
 @socketio.on('send_message')
 def handle_message(data):
     username = session.get('username', '匿名')
     message = {'username': username, 'message': data['message']}
-
-    # 保存到历史记录
     chat_history.append(message)
     if len(chat_history) > MAX_HISTORY:
-        chat_history.pop(0)  # 删除最早的一条
-
-    # 广播给所有连接用户
+        chat_history.pop(0)
     emit('receive_message', message, broadcast=True)
-
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
