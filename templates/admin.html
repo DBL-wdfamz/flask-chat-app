@@ -10,7 +10,7 @@
       padding: 40px;
     }
     table {
-      width: 60%;
+      width: 80%;
       margin: auto;
       border-collapse: collapse;
       background: white;
@@ -25,23 +25,36 @@
       background: #f0f0f0;
     }
     a {
-      color: red;
+      color: #0077cc;
       text-decoration: none;
+    }
+    h2 {
+      text-align: center;
+    }
+    .menu {
+      text-align: center;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
-<h2 style="text-align: center;">管理员用户管理</h2>
+<h2>管理员用户管理</h2>
+<div class="menu">
+  <a href="{{ url_for('admin_messages') }}">查看聊天记录</a> |
+  <a href="{{ url_for('admin') }}">用户管理</a>
+</div>
 <table>
   <tr>
     <th>用户名</th>
     <th>是否管理员</th>
+    <th>最近登录 IP</th>
     <th>操作</th>
   </tr>
   {% for user in users %}
     <tr>
       <td>{{ user.username }}</td>
       <td>{{ '是' if user.is_admin else '否' }}</td>
+      <td>{{ user.ip or '-' }}</td>
       <td>
         {% if user.username != 'admin' %}
           <a href="{{ url_for('delete_user', username=user.username) }}">删除</a>
