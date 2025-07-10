@@ -1,41 +1,131 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <title>聊天室</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <meta charset="UTF-8">
+  <title>聊天室</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e0eafc, #cfdef3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .chat-container {
+      background: white;
+      width: 90%;
+      max-width: 600px;
+      height: 80%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      background-color: #4a90e2;
+      color: white;
+      padding: 15px;
+      font-size: 18px;
+    }
+
+    #chatbox {
+      flex: 1;
+      padding: 10px;
+      overflow-y: scroll;
+      background-color: #f7f9fb;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 10px 15px;
+      border-radius: 15px;
+      max-width: 75%;
+      clear: both;
+    }
+
+    .mine {
+      background-color: #d1eaff;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .other {
+      background-color: #f1f0f0;
+      align-self: flex-start;
+      margin-right: auto;
+    }
+
+    .chat-input {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+
+    #message {
+      flex: 1;
+      border: none;
+      padding: 15px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    button {
+      padding: 15px 20px;
+      border: none;
+      background-color: #4a90e2;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #357ABD;
+    }
+  </style>
 </head>
 <body>
-    <h2>欢迎进入聊天室，{{ username }}</h2>
-    <div id="chatbox" style="border:1px solid #ccc; height:300px; overflow-y:scroll;"></div>
-    <input type="text" id="message" placeholder="输入消息..." autofocus>
-    <button onclick="sendMessage()">发送</button>
+  <div class="chat-container">
+    <div class="chat-header">欢迎进入聊天室，{{ username }}</div>
+    <div id="chatbox"></div>
+    <div class="chat-input">
+      <input type="text" id="message" placeholder="输入消息..." autofocus>
+      <button onclick="sendMessage()">发送</button>
+    </div>
+  </div>
 
-    <script>
-        const socket = io();
-        const chatbox = document.getElementById('chatbox');
+  <script>
+    const socket = io();
+    const chatbox = document.getElementById('chatbox');
+    const username = "{{ username }}";
 
-        socket.on('receive_message', function(data) {
-            const p = document.createElement('p');
-            p.textContent = data.username + ": " + data.message;
-            chatbox.appendChild(p);
-            chatbox.scrollTop = chatbox.scrollHeight;
-        });
+    socket.on('receive_message', function(data) {
+      const msg = document.createElement('div');
+      msg.classList.add('message');
+      msg.classList.add(data.username === username ? 'mine' : 'other');
+      msg.textContent = data.username + ": " + data.message;
+      chatbox.appendChild(msg);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    });
 
-        function sendMessage() {
-            const input = document.getElementById('message');
-            const msg = input.value.trim();
-            if (msg !== "") {
-                socket.emit('send_message', {message: msg});
-                input.value = "";
-            }
-        }
+    function sendMessage() {
+      const input = document.getElementById('message');
+      const msg = input.value.trim();
+      if (msg !== "") {
+        socket.emit('send_message', {message: msg});
+        input.value = "";
+      }
+    }
 
-        document.getElementById('message').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-    </script>
+    document.getElementById('message').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
 </body>
 </html>
