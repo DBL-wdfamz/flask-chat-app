@@ -1,94 +1,186 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <title>聊天室</title>
-    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
-    <style>
-        body {
-            font-family: Arial;
-            background-color: #f2f2f2;
-        }
-        #chat-box {
-            width: 90%;
-            height: 400px;
-            border: 1px solid #ccc;
-            overflow-y: scroll;
-            padding: 10px;
-            background: #fff;
-            margin: 20px auto;
-        }
-        #chat-input {
-            width: 90%;
-            display: flex;
-            margin: 0 auto;
-            margin-top: 10px;
-        }
-        #message {
-            flex: 1;
-            padding: 10px;
-            font-size: 16px;
-        }
-        button {
-            padding: 10px;
-        }
-        .message {
-            margin: 5px 0;
-        }
-        .username {
-            font-weight: bold;
-            margin-right: 5px;
-        }
-        #upload {
-            margin: 10px auto;
-            display: block;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>聊天室</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e0eafc, #cfdef3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .chat-container {
+      background: white;
+      width: 90%;
+      max-width: 600px;
+      height: 80%;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .chat-header {
+      background-color: #4a90e2;
+      color: white;
+      padding: 15px;
+      font-size: 18px;
+      position: relative;
+    }
+
+    #chatbox {
+      flex: 1;
+      padding: 10px;
+      overflow-y: scroll;
+      background-color: #f7f9fb;
+    }
+
+    .message {
+      margin: 8px 0;
+      padding: 10px 15px;
+      border-radius: 15px;
+      max-width: 75%;
+      clear: both;
+      word-break: break-word;
+    }
+
+    .mine {
+      background-color: #d1eaff;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .other {
+      background-color: #f1f0f0;
+      align-self: flex-start;
+      margin-right: auto;
+    }
+
+    .chat-input {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      gap: 10px;
+    }
+
+    #message {
+      flex: 1;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 5px;
+      outline: none;
+    }
+
+    button {
+      padding: 10px 16px;
+      border: none;
+      background-color: #4a90e2;
+      color: white;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #357ABD;
+    }
+
+    input[type="file"] {
+      border: none;
+    }
+
+    /* 管理员按钮样式 */
+    .admin-button {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background-color: #ff9800;
+      color: white;
+      padding: 5px 10px;
+      font-size: 13px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .admin-button:hover {
+      background-color: #e68900;
+    }
+  </style>
 </head>
 <body>
-    <h2 style="text-align:center;">欢迎，{{ username }}</h2>
-
-    <div id="chat-box"></div>
-
-    <form id="chat-input" onsubmit="sendMessage(); return false;">
-        <input type="text" id="message" placeholder="输入消息...">
-        <button type="submit">发送</button>
-    </form>
-
-    <form id="upload-form" enctype="multipart/form-data" method="POST" action="/upload">
-        <input type="file" name="image" accept="image/*">
-        <button type="submit">发送图片</button>
-    </form>
-
-    <script>
-        const socket = io();
-
-        socket.on('receive_message', function(data) {
-            const box = document.getElementById('chat-box');
-            const div = document.createElement('div');
-            div.className = 'message';
-            div.innerHTML = '<span class="username">' + data.username + ':</span> ' + data.message;
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
-        });
-
-        function sendMessage() {
-            const input = document.getElementById('message');
-            const message = input.value.trim();
-            if (message) {
-                socket.emit('send_message', { message: message });
-                input.value = '';
-            }
-        }
-    </script>
-
+<div class="chat-container">
+  <div class="chat-header">
+    欢迎进入聊天室，{{ username }}
     {% if session.get('is_admin') %}
-    <div style="position: fixed; top: 10px; right: 10px; z-index: 9999;">
-        <a href="{{ url_for('admin') }}"
-           style="background-color: #4CAF50; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 14px;">
-            管理员面板
-        </a>
-    </div>
+    <a class="admin-button" href="{{ url_for('admin') }}">管理员面板</a>
     {% endif %}
+  </div>
+
+  <div id="chatbox"></div>
+
+  <div class="chat-input">
+    <input type="text" id="message" placeholder="输入消息..." autofocus>
+    <button onclick="sendMessage()">发送</button>
+    <input type="file" id="imageInput" accept="image/*">
+  </div>
+</div>
+
+<script>
+  const socket = io();
+  const chatbox = document.getElementById('chatbox');
+  const username = "{{ username }}";
+
+  socket.on('receive_message', function(data) {
+    const msg = document.createElement('div');
+    msg.classList.add('message');
+    msg.classList.add(data.username === username ? 'mine' : 'other');
+
+    msg.innerHTML = `<strong>${data.username}:</strong> ` + data.message;
+    chatbox.appendChild(msg);
+    chatbox.scrollTop = chatbox.scrollHeight;
+  });
+
+  function sendMessage() {
+    const input = document.getElementById('message');
+    const msg = input.value.trim();
+    if (msg !== '') {
+      socket.emit('send_message', {message: msg});
+      input.value = '';
+    }
+  }
+
+  document.getElementById('message').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+
+  document.getElementById('imageInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    fetch('/upload', {
+      method: 'POST',
+      body: formData
+    }).then(res => {
+      if (!res.ok) alert('图片上传失败');
+    });
+  });
+</script>
 </body>
 </html>
