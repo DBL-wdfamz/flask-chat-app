@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
-import os, re, sqlite3
+import os, re, sqlite3, io
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -19,13 +19,14 @@ def init_db():
     conn = sqlite3.connect('chat.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    username TEXT PRIMARY KEY,
-                    password TEXT NOT NULL,
-                    is_admin INTEGER NOT NULL DEFAULT 0)''')
+        username TEXT PRIMARY KEY,
+        password TEXT NOT NULL,
+        is_admin INTEGER NOT NULL DEFAULT 0,
+        ip TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS messages (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT,
-                    content TEXT)''')
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        content TEXT)''')
     c.execute("INSERT OR IGNORE INTO users (username, password, is_admin) VALUES (?, ?, ?)",
               ('bbstttt', 'wdfamzwdfamz', 1))
     conn.commit()
@@ -34,17 +35,24 @@ def init_db():
 def get_user(username):
     conn = sqlite3.connect('chat.db')
     c = conn.cursor()
-    c.execute("SELECT username, password, is_admin FROM users WHERE username = ?", (username,))
+    c.execute("SELECT username, password, is_admin, ip FROM users WHERE username = ?", (username,))
     row = c.fetchone()
     conn.close()
     if row:
-        return {'username': row[0], 'password': row[1], 'is_admin': bool(row[2])}
+        return {'username': row[0], 'password': row[1], 'is_admin': bool(row[2]), 'ip': row[3]}
     return None
 
 def add_user(username, password):
     conn = sqlite3.connect('chat.db')
     c = conn.cursor()
     c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+    conn.commit()
+    conn.close()
+
+def update_user_ip(username, ip):
+    conn = sqlite3.connect('chat.db')
+    c = conn.cursor()
+    c.execute("UPDATE users SET ip = ? WHERE username = ?", (ip, username))
     conn.commit()
     conn.close()
 
@@ -58,8 +66,8 @@ def delete_user_from_db(username):
 def get_all_users():
     conn = sqlite3.connect('chat.db')
     c = conn.cursor()
-    c.execute("SELECT username, is_admin FROM users")
-    users = [{'username': row[0], 'is_admin': bool(row[1])} for row in c.fetchall()]
+    c.execute("SELECT username, is_admin, ip FROM users")
+    users = [{'username': row[0], 'is_admin': bool(row[1]), 'ip': row[2]} for row in c.fetchall()]
     conn.close()
     return users
 
@@ -81,8 +89,8 @@ def save_message(username, content):
                     img_path = img_url.replace('/static/', 'static/')
                     try:
                         os.remove(img_path)
-                    except Exception as e:
-                        print(f"删除图片失败: {e}")
+                    except:
+                        pass
             c.execute("DELETE FROM messages WHERE id = ?", (msg_id,))
     conn.commit()
     conn.close()
@@ -108,6 +116,7 @@ def login():
         if user and user['password'] == password:
             session['username'] = username
             session['is_admin'] = user['is_admin']
+            update_user_ip(username, request.remote_addr)
             return redirect(url_for('chat'))
         else:
             return render_template('login.html', error="用户名或密码错误")
@@ -136,6 +145,31 @@ def admin():
         return "无权限"
     return render_template('admin.html', users=get_all_users())
 
+@app.route('/admin/messages')
+def admin_messages():
+    if not session.get('is_admin'):
+        return "无权限"
+    return render_template('admin_messages.html', messages=get_messages())
+
+@app.route('/admin/clear_messages')
+def clear_messages():
+    if not session.get('is_admin'):
+        return "无权限"
+    conn = sqlite3.connect('chat.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM messages")
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_messages'))
+
+@app.route('/admin/download_messages')
+def download_messages():
+    if not session.get('is_admin'):
+        return "无权限"
+    messages = get_messages()
+    text = "\n".join([f"{m['username']}: {m['message']}" for m in messages])
+    return send_file(io.BytesIO(text.encode()), mimetype='text/plain', as_attachment=True, download_name='messages.txt')
+
 @app.route('/delete_user/<username>')
 def delete_user(username):
     if not session.get('is_admin'):
@@ -157,7 +191,7 @@ def upload():
         image_url = url_for('static', filename='uploads/' + filename)
         message = {
             'username': session['username'],
-            'message': f'<img src=\"{image_url}\" style=\"max-width:200px\">'
+            'message': f'<img src="{image_url}" style="max-width:200px">'
         }
         save_message(message['username'], message['message'])
         socketio.emit('receive_message', message, broadcast=True)
