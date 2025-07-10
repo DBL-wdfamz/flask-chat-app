@@ -14,6 +14,7 @@
       height: 100vh;
       margin: 0;
     }
+
     .chat-container {
       background: white;
       width: 90%;
@@ -25,56 +26,75 @@
       flex-direction: column;
       overflow: hidden;
     }
+
     .chat-header {
       background-color: #4a90e2;
       color: white;
       padding: 15px;
       font-size: 18px;
     }
+
     #chatbox {
       flex: 1;
       padding: 10px;
       overflow-y: scroll;
       background-color: #f7f9fb;
     }
+
     .message {
       margin: 8px 0;
       padding: 10px 15px;
       border-radius: 15px;
       max-width: 75%;
       clear: both;
+      word-break: break-word;
     }
+
     .mine {
       background-color: #d1eaff;
       align-self: flex-end;
       margin-left: auto;
     }
+
     .other {
       background-color: #f1f0f0;
       align-self: flex-start;
       margin-right: auto;
     }
+
     .chat-input {
       display: flex;
+      align-items: center;
+      padding: 10px;
       border-top: 1px solid #ddd;
+      gap: 10px;
     }
+
     #message {
       flex: 1;
       border: none;
-      padding: 15px;
+      padding: 12px;
       font-size: 16px;
+      border-radius: 5px;
       outline: none;
     }
+
     button {
-      padding: 15px 20px;
+      padding: 10px 16px;
       border: none;
       background-color: #4a90e2;
       color: white;
       font-size: 16px;
+      border-radius: 5px;
       cursor: pointer;
     }
+
     button:hover {
       background-color: #357ABD;
+    }
+
+    input[type=\"file\"] {
+      border: none;
     }
   </style>
 </head>
@@ -85,6 +105,7 @@
   <div class="chat-input">
     <input type="text" id="message" placeholder="输入消息..." autofocus>
     <button onclick="sendMessage()">发送</button>
+    <input type="file" id="imageInput" accept="image/*">
   </div>
 </div>
 
@@ -97,7 +118,9 @@
     const msg = document.createElement('div');
     msg.classList.add('message');
     msg.classList.add(data.username === username ? 'mine' : 'other');
-    msg.textContent = data.username + ': ' + data.message;
+
+    // 渲染为 HTML，支持图片
+    msg.innerHTML = `<strong>${data.username}:</strong> ` + data.message;
     chatbox.appendChild(msg);
     chatbox.scrollTop = chatbox.scrollHeight;
   });
@@ -115,6 +138,21 @@
     if (e.key === 'Enter') {
       sendMessage();
     }
+  });
+
+  document.getElementById('imageInput').addEventListener('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    fetch('/upload', {
+      method: 'POST',
+      body: formData
+    }).then(res => {
+      if (!res.ok) alert('图片上传失败');
+    });
   });
 </script>
 </body>
