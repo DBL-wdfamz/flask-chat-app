@@ -1,14 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>登录聊天室</title>
+    <title>登录</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to right, #dceefb, #f9f9f9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-box {
+            background: white;
+            padding: 30px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            width: 300px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        button {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #357ABD;
+        }
+        .error {
+            color: red;
+            text-align: center;
+        }
+        .register-link {
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <h2>请输入用户名进入聊天室</h2>
+<div class="login-box">
+    <h2>登录聊天室</h2>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <form method="post">
         <input type="text" name="username" placeholder="用户名" required>
-        <button type="submit">进入聊天室</button>
+        <input type="password" name="password" placeholder="密码" required>
+        <button type="submit">登录</button>
     </form>
+    <div class="register-link">
+        <a href="{{ url_for('register') }}">没有账号？注册一个</a>
+    </div>
+</div>
 </body>
 </html>
