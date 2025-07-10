@@ -14,7 +14,6 @@
       height: 100vh;
       margin: 0;
     }
-
     .chat-container {
       background: white;
       width: 90%;
@@ -26,21 +25,18 @@
       flex-direction: column;
       overflow: hidden;
     }
-
     .chat-header {
       background-color: #4a90e2;
       color: white;
       padding: 15px;
       font-size: 18px;
     }
-
     #chatbox {
       flex: 1;
       padding: 10px;
       overflow-y: scroll;
       background-color: #f7f9fb;
     }
-
     .message {
       margin: 8px 0;
       padding: 10px 15px;
@@ -48,24 +44,20 @@
       max-width: 75%;
       clear: both;
     }
-
     .mine {
       background-color: #d1eaff;
       align-self: flex-end;
       margin-left: auto;
     }
-
     .other {
       background-color: #f1f0f0;
       align-self: flex-start;
       margin-right: auto;
     }
-
     .chat-input {
       display: flex;
       border-top: 1px solid #ddd;
     }
-
     #message {
       flex: 1;
       border: none;
@@ -73,7 +65,6 @@
       font-size: 16px;
       outline: none;
     }
-
     button {
       padding: 15px 20px;
       border: none;
@@ -82,50 +73,49 @@
       font-size: 16px;
       cursor: pointer;
     }
-
     button:hover {
       background-color: #357ABD;
     }
   </style>
 </head>
 <body>
-  <div class="chat-container">
-    <div class="chat-header">欢迎进入聊天室，{{ username }}</div>
-    <div id="chatbox"></div>
-    <div class="chat-input">
-      <input type="text" id="message" placeholder="输入消息..." autofocus>
-      <button onclick="sendMessage()">发送</button>
-    </div>
+<div class="chat-container">
+  <div class="chat-header">欢迎进入聊天室，{{ username }}</div>
+  <div id="chatbox"></div>
+  <div class="chat-input">
+    <input type="text" id="message" placeholder="输入消息..." autofocus>
+    <button onclick="sendMessage()">发送</button>
   </div>
+</div>
 
-  <script>
-    const socket = io();
-    const chatbox = document.getElementById('chatbox');
-    const username = "{{ username }}";
+<script>
+  const socket = io();
+  const chatbox = document.getElementById('chatbox');
+  const username = "{{ username }}";
 
-    socket.on('receive_message', function(data) {
-      const msg = document.createElement('div');
-      msg.classList.add('message');
-      msg.classList.add(data.username === username ? 'mine' : 'other');
-      msg.textContent = data.username + ": " + data.message;
-      chatbox.appendChild(msg);
-      chatbox.scrollTop = chatbox.scrollHeight;
-    });
+  socket.on('receive_message', function(data) {
+    const msg = document.createElement('div');
+    msg.classList.add('message');
+    msg.classList.add(data.username === username ? 'mine' : 'other');
+    msg.textContent = data.username + ': ' + data.message;
+    chatbox.appendChild(msg);
+    chatbox.scrollTop = chatbox.scrollHeight;
+  });
 
-    function sendMessage() {
-      const input = document.getElementById('message');
-      const msg = input.value.trim();
-      if (msg !== "") {
-        socket.emit('send_message', {message: msg});
-        input.value = "";
-      }
+  function sendMessage() {
+    const input = document.getElementById('message');
+    const msg = input.value.trim();
+    if (msg !== '') {
+      socket.emit('send_message', {message: msg});
+      input.value = '';
     }
+  }
 
-    document.getElementById('message').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') {
-        sendMessage();
-      }
-    });
-  </script>
+  document.getElementById('message').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+</script>
 </body>
 </html>
