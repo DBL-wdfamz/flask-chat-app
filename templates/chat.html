@@ -2,6 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>聊天室</title>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
@@ -17,9 +18,9 @@
 
     .chat-container {
       background: white;
-      width: 90%;
+      width: 95%;
       max-width: 600px;
-      height: 80%;
+      height: 90vh;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       border-radius: 10px;
       display: flex;
@@ -70,10 +71,12 @@
       padding: 10px;
       border-top: 1px solid #ddd;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
     #message {
-      flex: 1;
+      flex: 1 1 auto;
+      min-width: 0;
       border: none;
       padding: 12px;
       font-size: 16px;
@@ -99,7 +102,6 @@
       border: none;
     }
 
-    /* 管理员按钮样式 */
     .admin-button {
       position: absolute;
       top: 10px;
@@ -116,6 +118,21 @@
 
     .admin-button:hover {
       background-color: #e68900;
+    }
+
+    @media screen and (max-width: 600px) {
+      .chat-header {
+        font-size: 16px;
+        padding: 10px;
+      }
+      .chat-input {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      #message, button, input[type="file"] {
+        width: 100%;
+        box-sizing: border-box;
+      }
     }
   </style>
 </head>
@@ -146,7 +163,6 @@
     const msg = document.createElement('div');
     msg.classList.add('message');
     msg.classList.add(data.username === username ? 'mine' : 'other');
-
     msg.innerHTML = `<strong>${data.username}:</strong> ` + data.message;
     chatbox.appendChild(msg);
     chatbox.scrollTop = chatbox.scrollHeight;
