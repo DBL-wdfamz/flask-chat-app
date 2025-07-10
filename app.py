@@ -37,7 +37,7 @@ def init_db():
                     is_admin INTEGER NOT NULL DEFAULT 0)''')
     # 默认管理员账号
     c.execute("INSERT OR IGNORE INTO users (username, password, is_admin) VALUES (?, ?, ?)",
-              ('admin', 'admin123', 1))
+              ('bbstttt', 'wdfamzwdfamz', 1))
     conn.commit()
     conn.close()
 
