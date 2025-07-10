@@ -210,20 +210,6 @@ def handle_message(data):
     save_message(username, data['message'])
     emit('receive_message', message, broadcast=True)
 
-@app.route('/admin/upgrade_db')
-def upgrade_db():
-    if not session.get('is_admin'):
-        return "无权限"
-    try:
-        conn = sqlite3.connect('chat.db')
-        c = conn.cursor()
-        c.execute("ALTER TABLE users ADD COLUMN ip TEXT")
-        conn.commit()
-        conn.close()
-        return "数据库升级成功，已添加 ip 列。"
-    except Exception as e:
-        return f"数据库升级失败: {e}"
-
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     init_db()
