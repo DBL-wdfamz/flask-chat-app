@@ -7,7 +7,6 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 socketio = SocketIO(app)
 
-chat_history = []
 MAX_HISTORY = 100
 UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
@@ -16,33 +15,24 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def delete_oldest_message():
-    old_msg = chat_history.pop(0)
-    if '<img src="' in old_msg['message']:
-        match = re.search(r'src=\"(.+?)\"', old_msg['message'])
-        if match:
-            img_url = match.group(1)
-            img_path = img_url.replace('/static/', 'static/')
-            try:
-                os.remove(img_path)
-            except Exception as e:
-                print(f"删除图片失败: {e}")
-
 def init_db():
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect('chat.db')
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
                     password TEXT NOT NULL,
                     is_admin INTEGER NOT NULL DEFAULT 0)''')
-    # 默认管理员账号
+    c.execute('''CREATE TABLE IF NOT EXISTS messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT,
+                    content TEXT)''')
     c.execute("INSERT OR IGNORE INTO users (username, password, is_admin) VALUES (?, ?, ?)",
               ('bbstttt', 'wdfamzwdfamz', 1))
     conn.commit()
     conn.close()
 
 def get_user(username):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect('chat.db')
     c = conn.cursor()
     c.execute("SELECT username, password, is_admin FROM users WHERE username = ?", (username,))
     row = c.fetchone()
@@ -52,26 +42,58 @@ def get_user(username):
     return None
 
 def add_user(username, password):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect('chat.db')
     c = conn.cursor()
     c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
     conn.commit()
     conn.close()
 
 def delete_user_from_db(username):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect('chat.db')
     c = conn.cursor()
     c.execute("DELETE FROM users WHERE username = ?", (username,))
     conn.commit()
     conn.close()
 
 def get_all_users():
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect('chat.db')
     c = conn.cursor()
     c.execute("SELECT username, is_admin FROM users")
     users = [{'username': row[0], 'is_admin': bool(row[1])} for row in c.fetchall()]
     conn.close()
     return users
+
+def save_message(username, content):
+    conn = sqlite3.connect('chat.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO messages (username, content) VALUES (?, ?)", (username, content))
+    conn.commit()
+    c.execute("SELECT COUNT(*) FROM messages")
+    total = c.fetchone()[0]
+    if total > MAX_HISTORY:
+        c.execute("SELECT id, content FROM messages ORDER BY id ASC LIMIT ?", (total - MAX_HISTORY,))
+        for row in c.fetchall():
+            msg_id, msg_content = row
+            if '<img src="' in msg_content:
+                match = re.search(r'src=\"(.+?)\"', msg_content)
+                if match:
+                    img_url = match.group(1)
+                    img_path = img_url.replace('/static/', 'static/')
+                    try:
+                        os.remove(img_path)
+                    except Exception as e:
+                        print(f"删除图片失败: {e}")
+            c.execute("DELETE FROM messages WHERE id = ?", (msg_id,))
+    conn.commit()
+    conn.close()
+
+def get_messages():
+    conn = sqlite3.connect('chat.db')
+    c = conn.cursor()
+    c.execute("SELECT username, content FROM messages ORDER BY id ASC")
+    messages = [{'username': row[0], 'message': row[1]} for row in c.fetchall()]
+    conn.close()
+    return messages
 
 @app.route('/')
 def index():
@@ -137,25 +159,21 @@ def upload():
             'username': session['username'],
             'message': f'<img src=\"{image_url}\" style=\"max-width:200px\">'
         }
-        chat_history.append(message)
-        if len(chat_history) > MAX_HISTORY:
-            delete_oldest_message()
+        save_message(message['username'], message['message'])
         socketio.emit('receive_message', message, broadcast=True)
         return 'OK'
     return 'Invalid file', 400
 
 @socketio.on('connect')
 def handle_connect():
-    for msg in chat_history:
+    for msg in get_messages():
         emit('receive_message', msg)
 
 @socketio.on('send_message')
 def handle_message(data):
     username = session.get('username', '匿名')
     message = {'username': username, 'message': data['message']}
-    chat_history.append(message)
-    if len(chat_history) > MAX_HISTORY:
-        delete_oldest_message()
+    save_message(username, data['message'])
     emit('receive_message', message, broadcast=True)
 
 if __name__ == '__main__':
