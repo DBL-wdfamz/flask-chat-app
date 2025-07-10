@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>聊天室</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h2>欢迎进入聊天室，{{ username }}</h2>
+    <div id="chatbox" style="border:1px solid #ccc; height:300px; overflow-y:scroll;"></div>
+    <input type="text" id="message" placeholder="输入消息..." autofocus>
+    <button onclick="sendMessage()">发送</button>
+
+    <script>
+        const socket = io();
+        const chatbox = document.getElementById('chatbox');
+
+        socket.on('receive_message', function(data) {
+            const p = document.createElement('p');
+            p.textContent = data.username + ": " + data.message;
+            chatbox.appendChild(p);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('message');
+            const msg = input.value.trim();
+            if (msg !== "") {
+                socket.emit('send_message', {message: msg});
+                input.value = "";
+            }
+        }
+
+        document.getElementById('message').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
