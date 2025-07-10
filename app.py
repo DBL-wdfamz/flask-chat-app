@@ -7,16 +7,22 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 socketio = SocketIO(app)
 
+# 持久化路径设置：Render 环境设置 DB_PATH=/data/chat.db，默认用本地chat.db
+DB_PATH = os.environ.get('DB_PATH', 'chat.db')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_PATH', 'static/uploads')
 MAX_HISTORY = 100
-UPLOAD_FOLDER = 'static/uploads'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def get_conn():
+    return sqlite3.connect(DB_PATH)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def init_db():
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         username TEXT PRIMARY KEY,
@@ -29,11 +35,15 @@ def init_db():
         content TEXT)''')
     c.execute("INSERT OR IGNORE INTO users (username, password, is_admin) VALUES (?, ?, ?)",
               ('bbstttt', 'wdfamzwdfamz', 1))
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN ip TEXT")
+    except:
+        pass  # 已存在忽略
     conn.commit()
     conn.close()
 
 def get_user(username):
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("SELECT username, password, is_admin, ip FROM users WHERE username = ?", (username,))
     row = c.fetchone()
@@ -43,28 +53,28 @@ def get_user(username):
     return None
 
 def add_user(username, password):
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
     conn.commit()
     conn.close()
 
 def update_user_ip(username, ip):
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("UPDATE users SET ip = ? WHERE username = ?", (ip, username))
     conn.commit()
     conn.close()
 
 def delete_user_from_db(username):
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("DELETE FROM users WHERE username = ?", (username,))
     conn.commit()
     conn.close()
 
 def get_all_users():
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("SELECT username, is_admin, ip FROM users")
     users = [{'username': row[0], 'is_admin': bool(row[1]), 'ip': row[2]} for row in c.fetchall()]
@@ -72,7 +82,7 @@ def get_all_users():
     return users
 
 def save_message(username, content):
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("INSERT INTO messages (username, content) VALUES (?, ?)", (username, content))
     conn.commit()
@@ -96,7 +106,7 @@ def save_message(username, content):
     conn.close()
 
 def get_messages():
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("SELECT username, content FROM messages ORDER BY id ASC")
     messages = [{'username': row[0], 'message': row[1]} for row in c.fetchall()]
@@ -155,7 +165,7 @@ def admin_messages():
 def clear_messages():
     if not session.get('is_admin'):
         return "无权限"
-    conn = sqlite3.connect('chat.db')
+    conn = get_conn()
     c = conn.cursor()
     c.execute("DELETE FROM messages")
     conn.commit()
