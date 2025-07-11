@@ -38,6 +38,7 @@
 <body>
 <div class="game-container">
   <h2>欢迎进入五子棋，{{ username }}</h2>
+  <div id="turn-info">当前轮到：等待中...</div>
   <canvas id="board" width="600" height="600"></canvas>
   <div class="status" id="status">等待其他玩家...</div>
 </div>
@@ -49,7 +50,6 @@
   const status = document.getElementById('status');
   const size = 15;
   const cellSize = canvas.width / size;
-  const colors = ['black', 'white', 'red', 'blue', 'green', 'orange', 'purple'];
   let myColor = null;
   let board = Array.from({ length: size }, () => Array(size).fill(null));
 
@@ -95,10 +95,10 @@
 
   socket.emit('join_game', {});
 
-  socket.on('update_players', function (players) {
-    if (players[username]) {
-      myColor = players[username];
-      status.textContent = `你是：${myColor} 棋`; 
+  socket.on('update_players', function (data) {
+    if (data.colors[username]) {
+      myColor = data.colors[username];
+      status.textContent = `你是：${myColor} 棋`;
     }
   });
 
@@ -123,9 +123,8 @@
   });
 
   socket.on('turn', (data) => {
-  const turnInfo = document.getElementById('turn-info');
-  turnInfo.innerText = `当前轮到：${data.current}`;
-});
+    document.getElementById('turn-info').innerText = `当前轮到：${data.current}`;
+  });
 
   drawBoard();
 </script>
