@@ -134,6 +134,21 @@
         box-sizing: border-box;
       }
     }
+
+    .upload-btn {
+      display: inline-block;
+      padding: 10px 16px;
+      background-color: #2196f3;
+      color: white;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.3s ease;
+    }
+    .upload-btn:hover {
+      background-color: #1976d2;
+    }
   </style>
 </head>
 <body>
@@ -150,7 +165,8 @@
 <div class="chat-input">
   <input type="text" id="message" placeholder="输入消息..." autofocus>
   <button onclick="sendMessage()">发送</button>
-  <input type="file" id="imageInput" accept="image/*">
+  <label for="imageInput" class="upload-btn">📷 上传图片</label>
+  <input type="file" id="imageInput" accept="image/*" style="display:none;">
 </div>
 
 <!-- 🎮 新增的进入游戏按钮 -->
