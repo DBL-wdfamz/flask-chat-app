@@ -15,6 +15,11 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+def get_real_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
+    return request.remote_addr
+
 def get_conn():
     return sqlite3.connect(DB_PATH)
 
@@ -126,7 +131,7 @@ def login():
         if user and user['password'] == password:
             session['username'] = username
             session['is_admin'] = user['is_admin']
-            update_user_ip(username, request.remote_addr)
+            update_user_ip(username, get_real_ip())
             return redirect(url_for('chat'))
         else:
             return render_template('login.html', error="用户名或密码错误")
