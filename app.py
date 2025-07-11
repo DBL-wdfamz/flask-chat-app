@@ -118,6 +118,14 @@ def get_messages():
     conn.close()
     return messages
 
+@app.route('/game')
+def index():
+    return render_template('game.html')
+
+@socketio.on('player_action')
+def handle_player_action(data):
+    emit('enemy_action', data, broadcast=True, include_self=False)
+
 @app.route('/')
 def index():
     return redirect(url_for('login'))
