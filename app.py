@@ -126,7 +126,12 @@ def login():
         if user and user['password'] == password:
             session['username'] = username
             session['is_admin'] = user['is_admin']
-            update_user_ip(username, request.remote_addr)
+            # 在登录时更新IP
+            conn = sqlite3.connect('chat.db')
+            c = conn.cursor()
+            c.execute("UPDATE users SET ip = ? WHERE username = ?", (get_real_ip(), username))
+            conn.commit()
+            conn.close()
             return redirect(url_for('chat'))
         else:
             return render_template('login.html', error="用户名或密码错误")
