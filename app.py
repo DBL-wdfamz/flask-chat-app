@@ -225,13 +225,21 @@ def join_game(data=None):
     username = session.get('username')
     if not username:
         return
+
     if username not in game_state['players']:
         game_state['players'].append(username)
         color = COLOR_SEQUENCE[len(game_state['players']) % len(COLOR_SEQUENCE)]
         game_state['colors'][username] = color
+
+    # 通知所有人玩家信息和棋盘
     emit('update_players', {'players': game_state['players'], 'colors': game_state['colors']}, broadcast=True)
     emit('update_board', game_state['board'], broadcast=True)
     emit('your_color', game_state['colors'][username])
+
+    # ⚠️ 如果是第一个玩家，发送初始回合信息
+    if len(game_state['players']) == 1:
+        game_state['turn_index'] = 0
+        emit('turn', {'current': game_state['players'][0]}, broadcast=True)
 
 @socketio.on('move')
 def make_move(data):
