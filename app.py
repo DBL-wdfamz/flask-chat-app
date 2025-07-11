@@ -118,7 +118,7 @@ def get_messages():
     conn.close()
     return messages
 
-@app.route("/aitext", methods=["GET"])
+@app.route("/aitext")
 def aiplugin_response():
     # 从请求中获取参数
     prompt = request.args.get("prompt", default="", type=str)
