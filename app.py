@@ -186,6 +186,14 @@ def admin_messages():
         return "无权限"
     return render_template('admin_messages.html', messages=get_messages())
 
+@app.route('/delete_user/<username>')
+def delete_user(username):
+    if not session.get('is_admin'):
+        return "无权限"
+    if username != 'admin':
+        delete_user_from_db(username)
+    return redirect(url_for('admin'))
+
 @app.route('/game')
 def game():
     if 'username' not in session:
