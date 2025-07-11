@@ -317,7 +317,7 @@ def upload():
             'message': f'<img src="{image_url}" style="max-width:200px">'
         }
         save_message(message['username'], message['message'])
-        socketio.emit('receive_message', message, broadcast=True)
+        socketio.emit('receive_message', message, namespace='/')
         return 'OK'
     return 'Invalid file', 400
 
