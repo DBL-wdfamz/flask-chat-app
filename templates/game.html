@@ -2,86 +2,164 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>五子棋对战</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>在线五子棋</title>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: sans-serif; text-align: center; background: #f2f2f2; }
-    canvas { background: #fff; margin-top: 20px; }
-    button { margin-top: 10px; padding: 10px 20px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #e0eafc, #cfdef3);
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h2 {
+      margin-top: 20px;
+      color: #333;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(15, 30px);
+      grid-template-rows: repeat(15, 30px);
+      gap: 1px;
+      background: #333;
+      margin: 20px auto;
+      border: 2px solid #222;
+      touch-action: none;
+    }
+
+    .cell {
+      width: 30px;
+      height: 30px;
+      background-color: #f5deb3;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .black::before, .white::before {
+      content: "";
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background-color: currentColor;
+      display: block;
+    }
+
+    .black { color: black; }
+    .white { color: white; border: 1px solid #ccc; }
+
+    #info {
+      margin-bottom: 20px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      background: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #357ABD;
+    }
+
+    @media screen and (max-width: 500px) {
+      #board {
+        grid-template-columns: repeat(15, 20px);
+        grid-template-rows: repeat(15, 20px);
+      }
+
+      .cell {
+        width: 20px;
+        height: 20px;
+      }
+
+      .black::before, .white::before {
+        width: 16px;
+        height: 16px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>五子棋 - 当前用户：{{ username }}</h2>
-  <canvas id="board" width="600" height="600"></canvas>
-  <div><button onclick="reset()">重置棋盘</button></div>
+  <h2>五子棋对战 - {{ username }}</h2>
+  <div id="info">请选择执子颜色：</div>
+  <div>
+    <button onclick="chooseColor('black')">黑子</button>
+    <button onclick="chooseColor('white')">白子</button>
+    <button onclick="resetGame()">重置棋盘</button>
+  </div>
+  <div id="board"></div>
 
   <script>
     const socket = io();
-    const username = "{{ username }}";
-    const canvas = document.getElementById("board");
-    const ctx = canvas.getContext("2d");
-    const size = 15;
-    const cellSize = canvas.width / size;
-    const board = Array.from({ length: size }, () => Array(size).fill(null));
-    let current = 'black';
+    const board = document.getElementById('board');
+    const info = document.getElementById('info');
+    const username = '{{ username }}';
+    let myColor = null;
 
-    function drawBoard() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = "#000";
-      for (let i = 0; i < size; i++) {
-        ctx.beginPath();
-        ctx.moveTo(cellSize / 2, cellSize / 2 + i * cellSize);
-        ctx.lineTo(canvas.width - cellSize / 2, cellSize / 2 + i * cellSize);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(cellSize / 2 + i * cellSize, cellSize / 2);
-        ctx.lineTo(cellSize / 2 + i * cellSize, canvas.height - cellSize / 2);
-        ctx.stroke();
-      }
-      for (let x = 0; x < size; x++) {
-        for (let y = 0; y < size; y++) {
-          if (board[x][y]) {
-            drawPiece(x, y, board[x][y]);
+    // 创建棋盘
+    for (let y = 0; y < 15; y++) {
+      for (let x = 0; x < 15; x++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.x = x;
+        cell.dataset.y = y;
+        cell.addEventListener('click', () => {
+          if (myColor !== null) {
+            socket.emit('move', { x: parseInt(cell.dataset.x), y: parseInt(cell.dataset.y) });
           }
+        });
+        board.appendChild(cell);
+      }
+    }
+
+    function chooseColor(color) {
+      myColor = color;
+      socket.emit('join_game', { color });
+      info.textContent = `你执 ${color === 'black' ? '黑子' : '白子'}。等待对手...`;
+    }
+
+    function resetGame() {
+      socket.emit('reset_game');
+    }
+
+    socket.on('update_board', state => {
+      const cells = board.querySelectorAll('.cell');
+      cells.forEach(cell => {
+        const x = parseInt(cell.dataset.x);
+        const y = parseInt(cell.dataset.y);
+        cell.classList.remove('black', 'white');
+        if (state[x][y]) {
+          cell.classList.add(state[x][y]);
         }
-      }
-    }
+      });
+    });
 
-    function drawPiece(x, y, color) {
-      ctx.beginPath();
-      ctx.arc((x + 0.5) * cellSize, (y + 0.5) * cellSize, cellSize / 3, 0, 2 * Math.PI);
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
-
-    canvas.addEventListener("click", e => {
-      const x = Math.floor(e.offsetX / cellSize);
-      const y = Math.floor(e.offsetY / cellSize);
-      if (!board[x][y]) {
-        socket.emit("move", { x, y, color: current });
+    socket.on('move', data => {
+      const cell = [...document.querySelectorAll('.cell')].find(c => c.dataset.x == data.x && c.dataset.y == data.y);
+      if (cell) {
+        cell.classList.add(data.color);
       }
     });
 
-    socket.on("move", data => {
-      if (!board[data.x][data.y]) {
-        board[data.x][data.y] = data.color;
-        drawPiece(data.x, data.y, data.color);
-        current = data.color === 'black' ? 'white' : 'black';
-      }
+    socket.on('game_over', data => {
+      alert(`玩家 ${data.winner} 获胜！`);
     });
 
-    function reset() {
-      socket.emit("reset_game");
-    }
-
-    socket.on("reset_game", () => {
-      for (let x = 0; x < size; x++) for (let y = 0; y < size; y++) board[x][y] = null;
-      drawBoard();
-      current = 'black';
+    socket.on('reset_game', () => {
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('black', 'white'));
     });
-
-    drawBoard();
   </script>
 </body>
 </html>
