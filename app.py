@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import os, re, sqlite3, io
@@ -14,11 +14,6 @@ MAX_HISTORY = 100
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-def get_real_ip():
-    if request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
-    return request.remote_addr
 
 def get_conn():
     return sqlite3.connect(DB_PATH)
@@ -118,21 +113,6 @@ def get_messages():
     conn.close()
     return messages
 
-@app.route("/aitext")
-def aiplugin_response():
-    # 从请求中获取参数
-    prompt = request.args.get("prompt", default="", type=str)
-    
-    # 模拟AI响应逻辑
-    if prompt:
-        reply = f"你输入的是：{prompt}"
-    else:
-        reply = "请输入 prompt 参数"
-
-    return jsonify({
-        "reply": "123123"
-    })
-
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -146,7 +126,7 @@ def login():
         if user and user['password'] == password:
             session['username'] = username
             session['is_admin'] = user['is_admin']
-            update_user_ip(username, get_real_ip())
+            update_user_ip(username, request.remote_addr)
             return redirect(url_for('chat'))
         else:
             return render_template('login.html', error="用户名或密码错误")
