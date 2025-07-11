@@ -317,7 +317,7 @@ def upload():
             'message': f'<img src="{image_url}" style="max-width:200px">'
         }
         save_message(message['username'], message['message'])
-        socketio.emit('receive_message', message)
+        socketio.emit('receive_message', message, broadcast=True)
         return 'OK'
     return 'Invalid file', 400
 
@@ -331,7 +331,7 @@ def handle_message(data):
     username = session.get('username', '匿名')
     message = {'username': username, 'message': data['message']}
     save_message(username, data['message'])
-    emit('receive_message', message)
+    emit('receive_message', message, broadcast=True)
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
