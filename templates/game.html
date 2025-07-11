@@ -1,15 +1,173 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Online JS Game</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="{{ url_for('static', filename='game.js') }}"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="utf-8">
+  <title>联机对战游戏</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    #map {
+      width: 1000px;
+      height: 500px;
+      background: #ddd;
+      border: 1px solid black;
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+    .player {
+      width: 50px;
+      height: 50px;
+      position: absolute;
+      top: 400px;
+    }
+    #player1 { background: red; left: 100px; }
+    #player2 { background: blue; left: 800px; }
+    .blood {
+      position: absolute;
+      top: 10px;
+      height: 20px;
+      background: green;
+      text-align: center;
+      color: white;
+    }
+    #blood1 { left: 50px; width: 100px; }
+    #blood2 { right: 50px; width: 100px; }
+    #win {
+      position: fixed;
+      top: 40%;
+      width: 100%;
+      text-align: center;
+      font-size: 40px;
+      color: darkgreen;
+      font-weight: bold;
+    }
+  </style>
+
+  <!-- 联机支持 -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const socket = io();
+    window.addEventListener('keydown', function(e) {
+      socket.emit('player_action', { keyCode: e.keyCode });
+    });
+    socket.on('enemy_action', function(data) {
+      simulateEnemyAction(data.keyCode);
+    });
+    socket.on('enemy_health', function(data) {
+      if (data.target === 'player1') {
+        health1 = data.health;
+        updateHealthDisplay('blood1', health1);
+        checkWin();
+      } else if (data.target === 'player2') {
+        health2 = data.health;
+        updateHealthDisplay('blood2', health2);
+        checkWin();
+      }
+    });
+  </script>
 </head>
 <body>
-    <!-- 原始HTML结构应在此保留，过长略去 -->
-    <div id="map"></div>
-    <div id="player1"></div>
-    <div id="player2"></div>
+  <div id="map">
+    <div id="player1" class="player"></div>
+    <div id="player2" class="player"></div>
+    <div id="blood1" class="blood">100</div>
+    <div id="blood2" class="blood">100</div>
+    <div id="win"></div>
+  </div>
+
+  <script>
+    const player1 = document.getElementById("player1");
+    const player2 = document.getElementById("player2");
+    const winText = document.getElementById("win");
+
+    let health1 = 100;
+    let health2 = 100;
+    let jumping1 = false;
+    let jumping2 = false;
+
+    function moveLeft(player, amount = 10) {
+      player.style.left = Math.max(0, player.offsetLeft - amount) + "px";
+    }
+
+    function moveRight(player, amount = 10) {
+      player.style.left = Math.min(950, player.offsetLeft + amount) + "px";
+    }
+
+    function jump(player, isPlayer1) {
+      if ((isPlayer1 && jumping1) || (!isPlayer1 && jumping2)) return;
+
+      let top = player.offsetTop;
+      let up = true;
+      let height = 0;
+      let interval = setInterval(() => {
+        if (up) {
+          height += 5;
+          player.style.top = (top - height) + "px";
+          if (height >= 60) up = false;
+        } else {
+          height -= 5;
+          player.style.top = (top - height) + "px";
+          if (height <= 0) {
+            clearInterval(interval);
+            if (isPlayer1) jumping1 = false;
+            else jumping2 = false;
+          }
+        }
+      }, 20);
+
+      if (isPlayer1) jumping1 = true;
+      else jumping2 = true;
+    }
+
+    function attack() {
+      health2 -= 10;
+      if (health2 < 0) health2 = 0;
+      updateHealthDisplay("blood2", health2);
+      socket.emit("health_update", { target: "player2", health: health2 });
+      checkWin();
+    }
+
+    function remoteAttack() {
+      health1 -= 10;
+      if (health1 < 0) health1 = 0;
+      updateHealthDisplay("blood1", health1);
+      socket.emit("health_update", { target: "player1", health: health1 });
+      checkWin();
+    }
+
+    function dash(player, direction) {
+      if (direction === 'left') moveLeft(player, 40);
+      else moveRight(player, 40);
+    }
+
+    function updateHealthDisplay(id, value) {
+      const bar = document.getElementById(id);
+      bar.style.width = value + "px";
+      bar.innerText = value;
+    }
+
+    function checkWin() {
+      if (health1 <= 0) winText.innerText = "玩家2 获胜！";
+      else if (health2 <= 0) winText.innerText = "玩家1 获胜！";
+    }
+
+    // 本地控制 player1
+    window.addEventListener("keydown", function (e) {
+      if (e.key === "a") moveLeft(player1);
+      if (e.key === "d") moveRight(player1);
+      if (e.key === "j") attack();
+      if (e.key === "k") dash(player1, "right");
+      if (e.key === "w") jump(player1, true);
+    });
+
+    // 接收远程 player2 控制
+    function simulateEnemyAction(keyCode) {
+      if (keyCode === 65) moveLeft(player2);
+      if (keyCode === 68) moveRight(player2);
+      if (keyCode === 74) remoteAttack();
+      if (keyCode === 75) dash(player2, "left");
+      if (keyCode === 87) jump(player2, false);
+    }
+  </script>
 </body>
 </html>
