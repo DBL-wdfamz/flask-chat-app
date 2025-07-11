@@ -1,19 +1,28 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify
-from flask_socketio import SocketIO, emit
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.utils import secure_filename
-import os, re, sqlite3, io
+import os, re, sqlite3, io, uuid
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 socketio = SocketIO(app)
 
-# 持久化路径设置：Render 环境设置 DB_PATH=/data/chat.db，默认用本地chat.db
+# 持久化路径设置
 DB_PATH = os.environ.get('DB_PATH', 'chat.db')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_PATH', 'static/uploads')
 MAX_HISTORY = 100
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# 房间棋局状态记录（存放当前棋局）
+game_state = {
+    'board': [[None for _ in range(15)] for _ in range(15)],
+    'players': {},
+    'turn': None,
+    'winner': None
+}
+
 
 def get_real_ip():
     if request.headers.getlist("X-Forwarded-For"):
@@ -43,7 +52,7 @@ def init_db():
     try:
         c.execute("ALTER TABLE users ADD COLUMN ip TEXT")
     except:
-        pass  # 已存在忽略
+        pass
     conn.commit()
     conn.close()
 
@@ -118,20 +127,6 @@ def get_messages():
     conn.close()
     return messages
 
-@app.route('/game')
-def game():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('game.html', username=session['username'])
-
-@socketio.on('move')
-def handle_move(data):
-    emit('move', data, broadcast=True)
-
-@socketio.on('reset_game')
-def handle_reset():
-    emit('reset_game', broadcast=True)
-
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -174,38 +169,52 @@ def admin():
         return "无权限"
     return render_template('admin.html', users=get_all_users())
 
-@app.route('/admin/messages')
-def admin_messages():
-    if not session.get('is_admin'):
-        return "无权限"
-    return render_template('admin_messages.html', messages=get_messages())
+@app.route('/game')
+def game():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('game.html', username=session['username'])
 
-@app.route('/admin/clear_messages')
-def clear_messages():
-    if not session.get('is_admin'):
-        return "无权限"
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("DELETE FROM messages")
-    conn.commit()
-    conn.close()
-    return redirect(url_for('admin_messages'))
+@socketio.on('join_game')
+def join_game(data):
+    username = session.get('username')
+    if username:
+        game_state['players'][username] = data['color']
+        emit('update_players', game_state['players'], broadcast=True)
+        emit('update_board', game_state['board'], broadcast=True)
 
-@app.route('/admin/download_messages')
-def download_messages():
-    if not session.get('is_admin'):
-        return "无权限"
-    messages = get_messages()
-    text = "\n".join([f"{m['username']}: {m['message']}" for m in messages])
-    return send_file(io.BytesIO(text.encode()), mimetype='text/plain', as_attachment=True, download_name='messages.txt')
+@socketio.on('move')
+def make_move(data):
+    x, y = data['x'], data['y']
+    username = session.get('username')
+    if game_state['board'][x][y] is None and username:
+        color = game_state['players'].get(username)
+        game_state['board'][x][y] = color
+        emit('move', {'x': x, 'y': y, 'color': color}, broadcast=True)
+        if check_win(x, y, color):
+            game_state['winner'] = username
+            emit('game_over', {'winner': username}, broadcast=True)
 
-@app.route('/delete_user/<username>')
-def delete_user(username):
-    if not session.get('is_admin'):
-        return "无权限"
-    if username != 'admin':
-        delete_user_from_db(username)
-    return redirect(url_for('admin'))
+@socketio.on('reset_game')
+def reset_game():
+    game_state['board'] = [[None for _ in range(15)] for _ in range(15)]
+    game_state['winner'] = None
+    emit('reset_game', broadcast=True)
+
+def check_win(x, y, color):
+    def count(dx, dy):
+        cnt = 0
+        nx, ny = x + dx, y + dy
+        while 0 <= nx < 15 and 0 <= ny < 15 and game_state['board'][nx][ny] == color:
+            cnt += 1
+            nx += dx
+            ny += dy
+        return cnt
+
+    for dx, dy in [(1,0), (0,1), (1,1), (1,-1)]:
+        if count(dx, dy) + count(-dx, -dy) + 1 >= 5:
+            return True
+    return False
 
 @app.route('/upload', methods=['POST'])
 def upload():
