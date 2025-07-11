@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import os, re, sqlite3, io
