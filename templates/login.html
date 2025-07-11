@@ -2,39 +2,48 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录</title>
     <style>
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(to right, #dceefb, #f9f9f9);
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #e0eafc, #cfdef3);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
         }
-        .login-box {
-            background: white;
+        .login-container {
+            background: #fff;
             padding: 30px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
             border-radius: 10px;
-            width: 300px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
         }
         h2 {
             text-align: center;
-            color: #333;
+            margin-bottom: 20px;
         }
-        input, button {
+        input[type="text"],
+        input[type="password"] {
             width: 100%;
-            padding: 10px;
-            margin-top: 15px;
+            padding: 12px;
+            margin: 8px 0;
             border: 1px solid #ccc;
-            border-radius: 6px;
+            border-radius: 5px;
+            box-sizing: border-box;
         }
         button {
+            width: 100%;
+            padding: 12px;
             background-color: #4a90e2;
             color: white;
             border: none;
+            border-radius: 5px;
+            font-size: 16px;
             cursor: pointer;
         }
         button:hover {
@@ -43,24 +52,31 @@
         .error {
             color: red;
             text-align: center;
+            margin-top: 10px;
         }
         .register-link {
-            margin-top: 15px;
             text-align: center;
+            margin-top: 15px;
+        }
+        @media screen and (max-width: 480px) {
+            .login-container {
+                padding: 20px;
+                margin: 10px;
+            }
         }
     </style>
 </head>
 <body>
-<div class="login-box">
-    <h2>登录聊天室</h2>
-    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+<div class="login-container">
+    <h2>登录</h2>
     <form method="post">
         <input type="text" name="username" placeholder="用户名" required>
         <input type="password" name="password" placeholder="密码" required>
         <button type="submit">登录</button>
     </form>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
     <div class="register-link">
-        <a href="{{ url_for('register') }}">没有账号？注册一个</a>
+        还没有账号？<a href="{{ url_for('register') }}">点击注册</a>
     </div>
 </div>
 </body>
