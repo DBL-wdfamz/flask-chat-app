@@ -122,6 +122,11 @@
     status.textContent = `你是：${myColor} 棋`;
   });
 
+  socket.on('turn', (data) => {
+  const turnInfo = document.getElementById('turn-info');
+  turnInfo.innerText = `当前轮到：${data.current}`;
+});
+
   drawBoard();
 </script>
 </body>
