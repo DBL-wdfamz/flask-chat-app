@@ -269,6 +269,22 @@ def reset_game():
     if game_state['players']:
         emit('turn', {'current': game_state['players'][0]}, broadcast=True)
 
+@socketio.on('disconnect')
+def handle_disconnect():
+    username = session.get('username')
+    if username in game_state['players']:
+        left_index = game_state['players'].index(username)
+        game_state['players'].remove(username)
+        del game_state['colors'][username]
+
+        # 如果当前是该玩家的回合
+        if game_state['turn_index'] >= len(game_state['players']):
+            game_state['turn_index'] = 0  # 防止越界
+
+        # 通知其他玩家更新玩家列表和回合
+        emit('update_players', {'players': game_state['players'], 'colors': game_state['colors']}, broadcast=True)
+        if game_state['players']:
+            emit('turn', {'current': game_state['players'][game_state['turn_index']]}, broadcast=True)
 
 def check_win(x, y, color):
     def count(dx, dy):
