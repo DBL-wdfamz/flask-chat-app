@@ -1,0 +1,28 @@
+body {
+    background-color: #4F4F4F;
+    margin: 0;
+    padding: 0;
+}
+#map {
+    width: 730px;
+    height: 520px;
+    background-color: #7a7a7a;
+    position: absolute;
+    left: 350px;
+    top: 30px;
+}
+#player1, #player2 {
+    width: 30px;
+    height: 50px;
+    position: absolute;
+    top: 500px;
+    border-radius: 7px;
+}
+#player1 {
+    left: 900px;
+    background-color: black;
+}
+#player2 {
+    left: 470px;
+    background-color: white;
+}
