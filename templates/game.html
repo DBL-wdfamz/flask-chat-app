@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Online JS Game</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='game.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- 原始HTML结构应在此保留，过长略去 -->
+    <div id="map"></div>
+    <div id="player1"></div>
+    <div id="player2"></div>
+</body>
+</html>
