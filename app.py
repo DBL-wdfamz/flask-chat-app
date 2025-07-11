@@ -19,10 +19,10 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 game_state = {
     'board': [[None for _ in range(15)] for _ in range(15)],
     'players': {},
+    'colors': ['black', 'white', 'red', 'blue', 'green', 'purple', 'orange'],
     'turn': None,
     'winner': None
 }
-
 
 def get_real_ip():
     if request.headers.getlist("X-Forwarded-For"):
@@ -176,10 +176,12 @@ def game():
     return render_template('game.html', username=session['username'])
 
 @socketio.on('join_game')
-def join_game(data):
+def join_game(_):
     username = session.get('username')
-    if username:
-        game_state['players'][username] = data['color']
+    if username and username not in game_state['players']:
+        available_colors = [c for c in game_state['colors'] if c not in game_state['players'].values()]
+        color = available_colors[0] if available_colors else 'gray'
+        game_state['players'][username] = color
         emit('update_players', game_state['players'], broadcast=True)
         emit('update_board', game_state['board'], broadcast=True)
 
@@ -194,11 +196,16 @@ def make_move(data):
         if check_win(x, y, color):
             game_state['winner'] = username
             emit('game_over', {'winner': username}, broadcast=True)
+            socketio.emit('reset_game', broadcast=True)
+            reset_board()
 
-@socketio.on('reset_game')
-def reset_game():
+def reset_board():
     game_state['board'] = [[None for _ in range(15)] for _ in range(15)]
     game_state['winner'] = None
+
+@socketio.on('reset_game')
+def manual_reset():
+    reset_board()
     emit('reset_game', broadcast=True)
 
 def check_win(x, y, color):
