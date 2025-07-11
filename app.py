@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import os, re, sqlite3, io
@@ -117,6 +117,20 @@ def get_messages():
     messages = [{'username': row[0], 'message': row[1]} for row in c.fetchall()]
     conn.close()
     return messages
+
+@app.route('/game')
+def game():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('game.html', username=session['username'])
+
+@socketio.on('move')
+def handle_move(data):
+    emit('move', data, broadcast=True)
+
+@socketio.on('reset_game')
+def handle_reset():
+    emit('reset_game', broadcast=True)
 
 @app.route('/')
 def index():
