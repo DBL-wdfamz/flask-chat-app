@@ -130,7 +130,7 @@ def aiplugin_response():
         reply = "请输入 prompt 参数"
 
     return jsonify({
-        "reply": reply
+        "reply": "123123"
     })
 
 @app.route('/')
