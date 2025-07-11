@@ -180,6 +180,12 @@ def admin():
         return "无权限"
     return render_template('admin.html', users=get_all_users())
 
+@app.route('/admin/messages')
+def admin_messages():
+    if not session.get('is_admin'):
+        return "无权限"
+    return render_template('admin_messages.html', messages=get_messages())
+
 @app.route('/game')
 def game():
     if 'username' not in session:
