@@ -1,39 +1,43 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
-import os, re, sqlite3, io, uuid
+import os, re, sqlite3, io
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 socketio = SocketIO(app)
 
-# 持久化路径设置
 DB_PATH = os.environ.get('DB_PATH', 'chat.db')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_PATH', 'static/uploads')
 MAX_HISTORY = 100
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# 房间棋局状态记录（存放当前棋局）
+# 记录棋盘、玩家顺序、回合信息
 game_state = {
     'board': [[None for _ in range(15)] for _ in range(15)],
-    'players': {},
-    'colors': ['black', 'white', 'red', 'blue', 'green', 'purple', 'orange'],
-    'turn': None,
+    'players': [],  # 顺序加入的玩家
+    'colors': {},   # 用户名到颜色
+    'turn_index': 0,
     'winner': None
 }
+
+COLOR_SEQUENCE = ['black', 'white', 'red', 'blue', 'green']
+
 
 def get_real_ip():
     if request.headers.getlist("X-Forwarded-For"):
         return request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
     return request.remote_addr
 
+
 def get_conn():
     return sqlite3.connect(DB_PATH)
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def init_db():
     conn = get_conn()
@@ -56,6 +60,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def get_user(username):
     conn = get_conn()
     c = conn.cursor()
@@ -66,12 +71,14 @@ def get_user(username):
         return {'username': row[0], 'password': row[1], 'is_admin': bool(row[2]), 'ip': row[3]}
     return None
 
+
 def add_user(username, password):
     conn = get_conn()
     c = conn.cursor()
     c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
     conn.commit()
     conn.close()
+
 
 def update_user_ip(username, ip):
     conn = get_conn()
@@ -80,12 +87,14 @@ def update_user_ip(username, ip):
     conn.commit()
     conn.close()
 
+
 def delete_user_from_db(username):
     conn = get_conn()
     c = conn.cursor()
     c.execute("DELETE FROM users WHERE username = ?", (username,))
     conn.commit()
     conn.close()
+
 
 def get_all_users():
     conn = get_conn()
@@ -94,6 +103,7 @@ def get_all_users():
     users = [{'username': row[0], 'is_admin': bool(row[1]), 'ip': row[2]} for row in c.fetchall()]
     conn.close()
     return users
+
 
 def save_message(username, content):
     conn = get_conn()
@@ -118,6 +128,7 @@ def save_message(username, content):
             c.execute("DELETE FROM messages WHERE id = ?", (msg_id,))
     conn.commit()
     conn.close()
+
 
 def get_messages():
     conn = get_conn()
@@ -176,37 +187,46 @@ def game():
     return render_template('game.html', username=session['username'])
 
 @socketio.on('join_game')
-def join_game(_):
+def join_game():
     username = session.get('username')
-    if username and username not in game_state['players']:
-        available_colors = [c for c in game_state['colors'] if c not in game_state['players'].values()]
-        color = available_colors[0] if available_colors else 'gray'
-        game_state['players'][username] = color
-        emit('update_players', game_state['players'], broadcast=True)
-        emit('update_board', game_state['board'], broadcast=True)
+    if not username:
+        return
+    if username not in game_state['players']:
+        game_state['players'].append(username)
+        color = COLOR_SEQUENCE[len(game_state['players']) % len(COLOR_SEQUENCE)]
+        game_state['colors'][username] = color
+    emit('update_players', {'players': game_state['players'], 'colors': game_state['colors']}, broadcast=True)
+    emit('update_board', game_state['board'], broadcast=True)
+    emit('your_color', game_state['colors'][username])
 
 @socketio.on('move')
 def make_move(data):
-    x, y = data['x'], data['y']
     username = session.get('username')
-    if game_state['board'][x][y] is None and username:
-        color = game_state['players'].get(username)
+    if username != game_state['players'][game_state['turn_index']]:
+        return
+    x, y = data['x'], data['y']
+    if 0 <= x < 15 and 0 <= y < 15 and game_state['board'][x][y] is None:
+        color = game_state['colors'][username]
         game_state['board'][x][y] = color
         emit('move', {'x': x, 'y': y, 'color': color}, broadcast=True)
         if check_win(x, y, color):
             game_state['winner'] = username
             emit('game_over', {'winner': username}, broadcast=True)
-            socketio.emit('reset_game', broadcast=True)
-            reset_board()
-
-def reset_board():
-    game_state['board'] = [[None for _ in range(15)] for _ in range(15)]
-    game_state['winner'] = None
+            socketio.sleep(2)
+            reset_game()
+        else:
+            game_state['turn_index'] = (game_state['turn_index'] + 1) % len(game_state['players'])
+            emit('turn', {'current': game_state['players'][game_state['turn_index']]}, broadcast=True)
 
 @socketio.on('reset_game')
-def manual_reset():
-    reset_board()
+def reset_game():
+    game_state['board'] = [[None for _ in range(15)] for _ in range(15)]
+    game_state['turn_index'] = 0
+    game_state['winner'] = None
     emit('reset_game', broadcast=True)
+    if game_state['players']:
+        emit('turn', {'current': game_state['players'][0]}, broadcast=True)
+
 
 def check_win(x, y, color):
     def count(dx, dy):
