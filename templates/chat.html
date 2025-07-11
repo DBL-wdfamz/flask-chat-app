@@ -148,6 +148,20 @@
   <div id="chatbox"></div>
 
   <div class="chat-input">
+    <div class="chat-input">
+  <input type="text" id="message" placeholder="输入消息..." autofocus>
+  <button onclick="sendMessage()">发送</button>
+  <input type="file" id="imageInput" accept="image/*">
+</div>
+
+<!-- 🎮 新增的进入游戏按钮 -->
+<div style="padding: 10px; text-align: center;">
+  <form action="{{ url_for('game') }}" method="get">
+    <button type="submit" style="padding: 10px 20px; font-size: 16px; border-radius: 6px; background-color: #4caf50; color: white; border: none; cursor: pointer;">
+      🎮 进入五子棋游戏
+    </button>
+  </form>
+</div>
     <input type="text" id="message" placeholder="输入消息..." autofocus>
     <button onclick="sendMessage()">发送</button>
     <input type="file" id="imageInput" accept="image/*">
