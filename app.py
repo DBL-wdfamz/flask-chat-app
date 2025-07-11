@@ -193,7 +193,8 @@ def game():
     return render_template('game.html', username=session['username'])
 
 @socketio.on('join_game')
-def join_game():
+def join_game(data=None):
+    sid = request.sid
     username = session.get('username')
     if not username:
         return
