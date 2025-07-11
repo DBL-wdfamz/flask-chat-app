@@ -119,7 +119,7 @@ def get_messages():
     return messages
 
 @app.route('/game')
-def index():
+def game():
     return render_template('game.html')
 
 @socketio.on('player_action')
