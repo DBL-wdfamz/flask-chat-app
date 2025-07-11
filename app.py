@@ -118,6 +118,21 @@ def get_messages():
     conn.close()
     return messages
 
+@app.route("/aitext", methods=["GET"])
+def aiplugin_response():
+    # 从请求中获取参数
+    prompt = request.args.get("prompt", default="", type=str)
+    
+    # 模拟AI响应逻辑
+    if prompt:
+        reply = f"你输入的是：{prompt}"
+    else:
+        reply = "请输入 prompt 参数"
+
+    return jsonify({
+        "reply": reply
+    })
+
 @app.route('/')
 def index():
     return redirect(url_for('login'))
