@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>五子棋对战</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #f2f2f2; }
+    canvas { background: #fff; margin-top: 20px; }
+    button { margin-top: 10px; padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h2>五子棋 - 当前用户：{{ username }}</h2>
+  <canvas id="board" width="600" height="600"></canvas>
+  <div><button onclick="reset()">重置棋盘</button></div>
+
+  <script>
+    const socket = io();
+    const username = "{{ username }}";
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const size = 15;
+    const cellSize = canvas.width / size;
+    const board = Array.from({ length: size }, () => Array(size).fill(null));
+    let current = 'black';
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#000";
+      for (let i = 0; i < size; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cellSize / 2, cellSize / 2 + i * cellSize);
+        ctx.lineTo(canvas.width - cellSize / 2, cellSize / 2 + i * cellSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cellSize / 2 + i * cellSize, cellSize / 2);
+        ctx.lineTo(cellSize / 2 + i * cellSize, canvas.height - cellSize / 2);
+        ctx.stroke();
+      }
+      for (let x = 0; x < size; x++) {
+        for (let y = 0; y < size; y++) {
+          if (board[x][y]) {
+            drawPiece(x, y, board[x][y]);
+          }
+        }
+      }
+    }
+
+    function drawPiece(x, y, color) {
+      ctx.beginPath();
+      ctx.arc((x + 0.5) * cellSize, (y + 0.5) * cellSize, cellSize / 3, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
+
+    canvas.addEventListener("click", e => {
+      const x = Math.floor(e.offsetX / cellSize);
+      const y = Math.floor(e.offsetY / cellSize);
+      if (!board[x][y]) {
+        socket.emit("move", { x, y, color: current });
+      }
+    });
+
+    socket.on("move", data => {
+      if (!board[data.x][data.y]) {
+        board[data.x][data.y] = data.color;
+        drawPiece(data.x, data.y, data.color);
+        current = data.color === 'black' ? 'white' : 'black';
+      }
+    });
+
+    function reset() {
+      socket.emit("reset_game");
+    }
+
+    socket.on("reset_game", () => {
+      for (let x = 0; x < size; x++) for (let y = 0; y < size; y++) board[x][y] = null;
+      drawBoard();
+      current = 'black';
+    });
+
+    drawBoard();
+  </script>
+</body>
+</html>
