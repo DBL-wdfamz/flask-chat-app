@@ -194,6 +194,25 @@ def delete_user(username):
         delete_user_from_db(username)
     return redirect(url_for('admin'))
 
+@app.route('/admin/clear_messages')
+def clear_messages():
+    if not session.get('is_admin'):
+        return "无权限"
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM messages")
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_messages'))
+
+@app.route('/admin/download_messages')
+def download_messages():
+    if not session.get('is_admin'):
+        return "无权限"
+    messages = get_messages()
+    text = "\n".join([f"{m['username']}: {m['message']}" for m in messages])
+    return send_file(io.BytesIO(text.encode()), mimetype='text/plain', as_attachment=True, download_name='messages.txt')
+
 @app.route('/game')
 def game():
     if 'username' not in session:
