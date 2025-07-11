@@ -123,8 +123,13 @@ def game():
     return render_template('game.html')
 
 @socketio.on('player_action')
-def handle_player_action(data):
+def handle_action(data):
     emit('enemy_action', data, broadcast=True, include_self=False)
+
+@socketio.on('health_update')
+def handle_health(data):
+    emit('enemy_health', data, broadcast=True, include_self=False)
+
 
 @app.route('/')
 def index():
