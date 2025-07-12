@@ -44,23 +44,38 @@ def undercover():
 @socketio.on('join_undercover')
 def handle_join_undercover():
     username = session.get('username')
-    sid = request.sid
     if not username:
         return
 
-    undercover_game['players'][username] = sid
+    # 初始化游戏状态
+    if 'players' not in undercover_game:
+        undercover_game['players'] = []
+        undercover_game['words'] = {}
+        undercover_game['votes'] = {}
+        undercover_game['undercover'] = None
+        undercover_game['alive'] = set()
 
-    if not undercover_game['words']:
-        players = list(undercover_game['players'].keys())
-        undercover_name = random.choice(players)
-        undercover_game['undercover'] = undercover_name
-        for p in players:
-            word = undercover_game['word_pair'][1] if p == undercover_name else undercover_game['word_pair'][0]
+    if username not in undercover_game['players']:
+        undercover_game['players'].append(username)
+        undercover_game['alive'].add(username)
+
+    socketio.emit('update_players', {'players': undercover_game['players']})
+
+    # 等待至少 4 名玩家后开始游戏（你可以改为任意数）
+    if len(undercover_game['players']) >= 4 and not undercover_game['words']:
+        normal_word = "苹果"
+        undercover_word = "香蕉"
+        undercover = random.choice(undercover_game['players'])
+        undercover_game['undercover'] = undercover
+        for p in undercover_game['players']:
+            word = undercover_word if p == undercover else normal_word
             undercover_game['words'][p] = word
+        start_new_vote_round()
 
-    emit('your_word', undercover_game['words'][username])
-    emit('player_list', list(undercover_game['players'].keys()), broadcast=True)
-
+    # 仅当分词完毕后发送词语
+    if username in undercover_game['words']:
+        emit('your_word', {'word': undercover_game['words'][username]})
+        
 @socketio.on('vote')
 def handle_vote(data):
     username = session.get('username')
