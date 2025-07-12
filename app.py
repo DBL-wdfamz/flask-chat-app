@@ -27,12 +27,11 @@ game_state = {
 COLOR_SEQUENCE = ['black', 'white', 'red', 'blue', 'green']
 
 undercover_game = {
-    'players': {},  # username: sid
-    'words': {},    # username: word
-    'votes': {},    # username: voted_username
-    'word_pair': ('香蕉', '苹果'),
+    'players': [],           # 应该是列表
+    'words': {},             # 映射每位玩家的词语
+    'votes': {},             # 记录投票
     'undercover': None,
-    'eliminated': set()
+    'alive': set()
 }
 
 @app.route('/undercover')
