@@ -26,6 +26,69 @@ game_state = {
 
 COLOR_SEQUENCE = ['black', 'white', 'red', 'blue', 'green']
 
+undercover_game = {
+    'players': {},  # username: sid
+    'words': {},    # username: word
+    'votes': {},    # username: voted_username
+    'word_pair': ('香蕉', '苹果'),
+    'undercover': None,
+    'eliminated': set()
+}
+
+@app.route('/undercover')
+def undercover():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    return render_template('undercover.html', username=session['username'])
+
+@socketio.on('join_undercover')
+def handle_join_undercover():
+    username = session.get('username')
+    sid = request.sid
+    if not username:
+        return
+
+    undercover_game['players'][username] = sid
+
+    if not undercover_game['words']:
+        players = list(undercover_game['players'].keys())
+        undercover_name = random.choice(players)
+        undercover_game['undercover'] = undercover_name
+        for p in players:
+            word = undercover_game['word_pair'][1] if p == undercover_name else undercover_game['word_pair'][0]
+            undercover_game['words'][p] = word
+
+    emit('your_word', undercover_game['words'][username])
+    emit('player_list', list(undercover_game['players'].keys()), broadcast=True)
+
+@socketio.on('vote')
+def handle_vote(data):
+    username = session.get('username')
+    target = data.get('target')
+    if not username or not target:
+        return
+    if target in undercover_game['eliminated']:
+        return
+
+    undercover_game['votes'][username] = target
+
+    if len(undercover_game['votes']) == len(undercover_game['players']) - len(undercover_game['eliminated']):
+        from collections import Counter
+        counter = Counter(undercover_game['votes'].values())
+        most_voted = counter.most_common(1)[0]
+
+        eliminated = most_voted[0]
+        undercover_game['eliminated'].add(eliminated)
+        socketio.emit('eliminated', {'player': eliminated})
+
+        alive = set(undercover_game['players'].keys()) - undercover_game['eliminated']
+        if undercover_game['undercover'] in undercover_game['eliminated']:
+            socketio.emit('game_over', {'result': '平民胜利'})
+        elif len(alive) <= 2:
+            socketio.emit('game_over', {'result': '卧底胜利'})
+
+        undercover_game['votes'].clear()
+
 
 def get_real_ip():
     if request.headers.getlist("X-Forwarded-For"):
