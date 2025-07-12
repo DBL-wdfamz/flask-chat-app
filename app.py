@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 from werkzeug.utils import secure_filename
 import os, re, sqlite3, io
 import random
@@ -27,11 +27,13 @@ game_state = {
 COLOR_SEQUENCE = ['black', 'white', 'red', 'blue', 'green']
 
 undercover_game = {
-    'players': [],           # 应该是列表
-    'words': {},             # 映射每位玩家的词语
-    'votes': {},             # 记录投票
+    'players': [],
+    'words': {},
+    'votes': {},
     'undercover': None,
-    'alive': set()
+    'alive': set(),
+    'ready': set(),
+    'eliminated': set()
 }
 
 @app.route('/undercover')
@@ -46,35 +48,42 @@ def handle_join_undercover():
     if not username:
         return
 
-    # 初始化游戏状态
     if 'players' not in undercover_game:
         undercover_game['players'] = []
         undercover_game['words'] = {}
         undercover_game['votes'] = {}
         undercover_game['undercover'] = None
         undercover_game['alive'] = set()
+        undercover_game['ready'] = set()
+        undercover_game['eliminated'] = set()
 
     if username not in undercover_game['players']:
         undercover_game['players'].append(username)
         undercover_game['alive'].add(username)
 
+    join_room(username)
     socketio.emit('update_players', {'players': undercover_game['players']})
 
-    # 等待至少 4 名玩家后开始游戏（你可以改为任意数）
-    if len(undercover_game['players']) >= 4 and not undercover_game['words']:
-        normal_word = "苹果"
-        undercover_word = "香蕉"
-        undercover = random.choice(undercover_game['players'])
-        undercover_game['undercover'] = undercover
-        for p in undercover_game['players']:
-            word = undercover_word if p == undercover else normal_word
-            undercover_game['words'][p] = word
-        start_new_vote_round()
+@socketio.on('undercover_ready')
+def handle_undercover_ready():
+    username = session.get('username')
+    if username and username in undercover_game['players']:
+        undercover_game['ready'].add(username)
+        socketio.emit('update_ready', list(undercover_game['ready']))
+        if len(undercover_game['ready']) == len(undercover_game['players']):
+            start_undercover_game()
 
-    # 仅当分词完毕后发送词语
-    if username in undercover_game['words']:
-        emit('your_word', {'word': undercover_game['words'][username]})
-        
+def start_undercover_game():
+    normal_word = "苹果"
+    undercover_word = "香蕉"
+    undercover = random.choice(undercover_game['players'])
+    undercover_game['undercover'] = undercover
+    for p in undercover_game['players']:
+        word = undercover_word if p == undercover else normal_word
+        undercover_game['words'][p] = word
+    for p in undercover_game['players']:
+        socketio.emit('your_word', {'word': undercover_game['words'][p]}, room=p)
+
 @socketio.on('vote')
 def handle_vote(data):
     username = session.get('username')
@@ -95,7 +104,7 @@ def handle_vote(data):
         undercover_game['eliminated'].add(eliminated)
         socketio.emit('eliminated', {'player': eliminated})
 
-        alive = set(undercover_game['players'].keys()) - undercover_game['eliminated']
+        alive = set(undercover_game['players']) - undercover_game['eliminated']
         if undercover_game['undercover'] in undercover_game['eliminated']:
             socketio.emit('game_over', {'result': '平民胜利'})
         elif len(alive) <= 2:
