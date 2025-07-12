@@ -1,135 +1,76 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <title>谁是卧底</title>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      background-color: #f5f5f5;
-      text-align: center;
-      padding: 30px;
-    }
-
-    #player-list {
-      margin: 20px auto;
-      max-width: 300px;
-      text-align: left;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-
-    button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #4CAF50;
-      border: none;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #45a049;
-    }
-
-    #word-box {
-      font-size: 22px;
-      color: #333;
-      margin-top: 20px;
-    }
-
-    #vote-section {
-      margin-top: 30px;
-    }
-
-    #vote-section select {
-      padding: 5px;
-      font-size: 16px;
-    }
-
-    #result {
-      margin-top: 20px;
-      font-weight: bold;
-      color: #d32f2f;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>谁是卧底</title>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; }
+        h1 { color: #333; }
+        #players, #ready, #word, #votes, #result { margin-top: 15px; }
+        button { padding: 10px 20px; margin-top: 10px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; }
+        button:hover { background-color: #45a049; }
+        .eliminated { text-decoration: line-through; color: gray; }
+    </style>
 </head>
 <body>
-  <h1>谁是卧底</h1>
-  <p>欢迎，{{ username }}</p>
+<h1>谁是卧底</h1>
+<p>欢迎，<strong id="username"></strong></p>
+<div id="players"></div>
+<div id="ready"></div>
+<div id="word"></div>
+<div id="votes"></div>
+<div id="result"></div>
+<button id="readyBtn">准备</button>
 
-  <div id="player-list">
-    <strong>当前玩家：</strong>
-    <ul id="players"></ul>
-  </div>
-
-  <div id="word-box"></div>
-
-  <button id="ready-btn">点击准备</button>
-
-  <div id="vote-section" style="display:none;">
-    <h3>请选择要淘汰的玩家：</h3>
-    <select id="vote-target"></select>
-    <button onclick="vote()">投票</button>
-  </div>
-
-  <div id="result"></div>
-
-  <script>
+<script>
     const socket = io();
     const username = "{{ username }}";
+    document.getElementById("username").innerText = username;
 
-    document.getElementById('ready-btn').onclick = function () {
-      socket.emit('join_undercover');
-      document.getElementById('ready-btn').disabled = true;
-      document.getElementById('ready-btn').innerText = "已准备，等待其他玩家...";
+    socket.emit("join_undercover");
+
+    socket.on("update_players", data => {
+        document.getElementById("players").innerText = `玩家：${data.players.join(", ")}`;
+    });
+
+    socket.on("update_ready", readyList => {
+        document.getElementById("ready").innerText = `已准备：${readyList.join(", ")}`;
+    });
+
+    socket.on("your_word", data => {
+        document.getElementById("word").innerHTML = `<strong>你的词语：</strong> ${data.word}`;
+    });
+
+    socket.on("eliminated", data => {
+        const el = document.createElement("div");
+        el.className = "eliminated";
+        el.innerText = `${data.player} 被淘汰了`;
+        document.getElementById("votes").appendChild(el);
+    });
+
+    socket.on("game_over", data => {
+        document.getElementById("result").innerHTML = `<h2>${data.result}</h2>`;
+    });
+
+    document.getElementById("readyBtn").onclick = () => {
+        socket.emit("undercover_ready");
+        document.getElementById("readyBtn").disabled = true;
     };
 
-    socket.on('your_word', data => {
-      document.getElementById('word-box').innerText = `你的词语是：${data.word}`;
-      document.getElementById('vote-section').style.display = 'block';
+    // 投票逻辑（仅演示）
+    socket.on("update_players", data => {
+        const votesDiv = document.getElementById("votes");
+        votesDiv.innerHTML = "<h3>点击玩家进行投票</h3>";
+        data.players.forEach(player => {
+            const btn = document.createElement("button");
+            btn.innerText = player;
+            btn.onclick = () => {
+                socket.emit("vote", { target: player });
+            };
+            votesDiv.appendChild(btn);
+        });
     });
-
-    socket.on('update_players', data => {
-      const list = document.getElementById('players');
-      list.innerHTML = '';
-      const voteTarget = document.getElementById('vote-target');
-      voteTarget.innerHTML = '';
-      data.players.forEach(p => {
-        const li = document.createElement('li');
-        li.textContent = p;
-        list.appendChild(li);
-
-        if (p !== username) {
-          const option = document.createElement('option');
-          option.value = p;
-          option.text = p;
-          voteTarget.appendChild(option);
-        }
-      });
-    });
-
-    socket.on('eliminated', data => {
-      const msg = `玩家 ${data.player} 被淘汰`;
-      document.getElementById('result').innerText = msg;
-    });
-
-    socket.on('game_over', data => {
-      document.getElementById('result').innerText = `游戏结束：${data.result}`;
-    });
-
-    function vote() {
-      const target = document.getElementById('vote-target').value;
-      if (target) {
-        socket.emit('vote', { target });
-        document.getElementById('vote-section').style.display = 'none';
-      }
-    }
-  </script>
+</script>
 </body>
 </html>
