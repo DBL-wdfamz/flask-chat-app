@@ -45,31 +45,22 @@ def undercover():
 @socketio.on('join_undercover')
 def handle_join_undercover():
     username = session.get('username')
-    if not username:
+    if not username or username in undercover_game['players']:
         return
 
-    if 'players' not in undercover_game:
-        undercover_game['players'] = []
-        undercover_game['words'] = {}
-        undercover_game['votes'] = {}
-        undercover_game['undercover'] = None
-        undercover_game['alive'] = set()
-        undercover_game['ready'] = set()
-        undercover_game['eliminated'] = set()
-
-    if username not in undercover_game['players']:
-        undercover_game['players'].append(username)
-        undercover_game['alive'].add(username)
-
+    undercover_game['players'].append(username)
+    undercover_game['alive'].add(username)
     join_room(username)
+
     socketio.emit('update_players', {'players': undercover_game['players']})
 
 @socketio.on('undercover_ready')
 def handle_undercover_ready():
     username = session.get('username')
-    if username and username in undercover_game['players']:
+    if username in undercover_game['players']:
         undercover_game['ready'].add(username)
         socketio.emit('update_ready', list(undercover_game['ready']))
+
         if len(undercover_game['ready']) == len(undercover_game['players']):
             start_undercover_game()
 
@@ -86,23 +77,19 @@ def start_undercover_game():
 
 @socketio.on('vote')
 def handle_vote(data):
+    from collections import Counter
     username = session.get('username')
     target = data.get('target')
-    if not username or not target:
-        return
-    if target in undercover_game['eliminated']:
+    if not username or not target or target in undercover_game['eliminated']:
         return
 
     undercover_game['votes'][username] = target
 
     if len(undercover_game['votes']) == len(undercover_game['players']) - len(undercover_game['eliminated']):
-        from collections import Counter
         counter = Counter(undercover_game['votes'].values())
-        most_voted = counter.most_common(1)[0]
-
-        eliminated = most_voted[0]
-        undercover_game['eliminated'].add(eliminated)
-        socketio.emit('eliminated', {'player': eliminated})
+        most_voted = counter.most_common(1)[0][0]
+        undercover_game['eliminated'].add(most_voted)
+        socketio.emit('eliminated', {'player': most_voted})
 
         alive = set(undercover_game['players']) - undercover_game['eliminated']
         if undercover_game['undercover'] in undercover_game['eliminated']:
