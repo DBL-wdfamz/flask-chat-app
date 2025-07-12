@@ -4,13 +4,6 @@ from werkzeug.utils import secure_filename
 import os, re, sqlite3, io
 import random
 
-UNDERCOVER_WORDS = [
-    ("猫", "狗"),
-    ("西瓜", "哈密瓜"),
-    ("警察", "小偷"),
-    ("披萨", "汉堡"),
-    ("沙漠", "海洋"),
-]
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -341,31 +334,6 @@ def handle_message(data):
     message = {'username': username, 'message': data['message']}
     save_message(username, data['message'])
     emit('receive_message', message, broadcast=True)
-
-@app.route('/undercover', methods=['GET', 'POST'])
-def undercover():
-    if request.method == 'POST':
-        names = [name.strip() for name in request.form['players'].split(',') if name.strip()]
-        if not (4 <= len(names) <= 10):
-            return render_template('undercover.html', error="请输入4~10个玩家名", players='', result=None)
-
-        civilian_word, undercover_word = random.choice(UNDERCOVER_WORDS)
-        undercover_count = 1 if len(names) <= 6 else 2
-        roles = [undercover_word]*undercover_count + [civilian_word]*(len(names)-undercover_count)
-        random.shuffle(roles)
-
-        player_roles = list(zip(names, roles))
-        session['undercover_roles'] = player_roles
-        return redirect(url_for('show_roles'))
-
-    return render_template('undercover.html', error=None, players='', result=None)
-
-
-@app.route('/undercover/roles')
-def show_roles():
-    if 'undercover_roles' not in session:
-        return redirect(url_for('undercover'))
-    return render_template('undercover_roles.html', roles=session['undercover_roles'])
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
