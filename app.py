@@ -1,9 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file
-from flask_socketio import SocketIO, emit, join_room
+from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import os, re, sqlite3, io
-import random
-
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -25,79 +23,6 @@ game_state = {
 }
 
 COLOR_SEQUENCE = ['black', 'white', 'red', 'blue', 'green']
-
-undercover_game = {
-    'players': [],
-    'words': {},
-    'votes': {},
-    'undercover': None,
-    'alive': set(),
-    'ready': set(),
-    'eliminated': set()
-}
-
-@app.route('/undercover')
-def undercover():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('undercover.html', username=session['username'])
-
-@socketio.on('join_undercover')
-def handle_join_undercover():
-    username = session.get('username')
-    if not username or username in undercover_game['players']:
-        return
-
-    undercover_game['players'].append(username)
-    undercover_game['alive'].add(username)
-    join_room(username)
-
-    socketio.emit('update_players', {'players': undercover_game['players']})
-
-@socketio.on('undercover_ready')
-def handle_undercover_ready():
-    username = session.get('username')
-    if username in undercover_game['players']:
-        undercover_game['ready'].add(username)
-        socketio.emit('update_ready', list(undercover_game['ready']))
-
-        if len(undercover_game['ready']) == len(undercover_game['players']):
-            start_undercover_game()
-
-def start_undercover_game():
-    normal_word = "苹果"
-    undercover_word = "香蕉"
-    undercover = random.choice(undercover_game['players'])
-    undercover_game['undercover'] = undercover
-    for p in undercover_game['players']:
-        word = undercover_word if p == undercover else normal_word
-        undercover_game['words'][p] = word
-    for p in undercover_game['players']:
-        socketio.emit('your_word', {'word': undercover_game['words'][p]}, room=p)
-
-@socketio.on('vote')
-def handle_vote(data):
-    from collections import Counter
-    username = session.get('username')
-    target = data.get('target')
-    if not username or not target or target in undercover_game['eliminated']:
-        return
-
-    undercover_game['votes'][username] = target
-
-    if len(undercover_game['votes']) == len(undercover_game['players']) - len(undercover_game['eliminated']):
-        counter = Counter(undercover_game['votes'].values())
-        most_voted = counter.most_common(1)[0][0]
-        undercover_game['eliminated'].add(most_voted)
-        socketio.emit('eliminated', {'player': most_voted})
-
-        alive = set(undercover_game['players']) - undercover_game['eliminated']
-        if undercover_game['undercover'] in undercover_game['eliminated']:
-            socketio.emit('game_over', {'result': '平民胜利'})
-        elif len(alive) <= 2:
-            socketio.emit('game_over', {'result': '卧底胜利'})
-
-        undercover_game['votes'].clear()
 
 
 def get_real_ip():
