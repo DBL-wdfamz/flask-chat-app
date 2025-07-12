@@ -6,127 +6,130 @@
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #f7f7f7, #dfe9f3);
-      padding: 20px;
+      font-family: sans-serif;
+      background-color: #f5f5f5;
       text-align: center;
+      padding: 30px;
     }
-    h1 { color: #333; }
-    .player-list {
-      margin: 10px auto;
-      padding: 10px;
-      max-width: 600px;
-      background: #fff;
-      border-radius: 10px;
+
+    #player-list {
+      margin: 20px auto;
+      max-width: 300px;
+      text-align: left;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    .vote-button {
-      padding: 8px 12px;
-      margin: 5px;
+
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 16px;
       background-color: #4CAF50;
       border: none;
       color: white;
       border-radius: 5px;
       cursor: pointer;
     }
-    .vote-button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
+
+    button:hover {
+      background-color: #45a049;
     }
-    #your-word {
-      margin: 10px auto;
-      font-size: 18px;
-      background-color: #ffeeba;
-      padding: 8px;
-      border-radius: 8px;
-      display: inline-block;
-    }
-    #result {
-      font-size: 20px;
-      font-weight: bold;
-      margin-top: 15px;
-      color: #d33;
-    }
-    .back-button {
+
+    #word-box {
+      font-size: 22px;
+      color: #333;
       margin-top: 20px;
-      padding: 8px 16px;
-      background-color: #2196F3;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      text-decoration: none;
-      display: inline-block;
     }
-    .back-button:hover {
-      background-color: #0b7dda;
+
+    #vote-section {
+      margin-top: 30px;
+    }
+
+    #vote-section select {
+      padding: 5px;
+      font-size: 16px;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #d32f2f;
     }
   </style>
 </head>
 <body>
   <h1>谁是卧底</h1>
+  <p>欢迎，{{ username }}</p>
 
-  <div id="your-word">你拿到的词语是：<span id="my-word">（等待中...）</span></div>
-
-  <div class="player-list">
-    <h3>玩家列表</h3>
-    <div id="players"></div>
+  <div id="player-list">
+    <strong>当前玩家：</strong>
+    <ul id="players"></ul>
   </div>
 
-  <div>
-    <h3>请选择要投票淘汰的玩家：</h3>
-    <div id="vote-buttons"></div>
+  <div id="word-box"></div>
+
+  <button id="ready-btn">点击准备</button>
+
+  <div id="vote-section" style="display:none;">
+    <h3>请选择要淘汰的玩家：</h3>
+    <select id="vote-target"></select>
+    <button onclick="vote()">投票</button>
   </div>
 
   <div id="result"></div>
 
-  <a href="/chat" class="back-button">返回聊天</a>
-
   <script>
     const socket = io();
-    const myName = "{{ username }}";
-    let hasVoted = false;
+    const username = "{{ username }}";
 
-    socket.emit('join_undercover');
+    document.getElementById('ready-btn').onclick = function () {
+      socket.emit('join_undercover');
+      document.getElementById('ready-btn').disabled = true;
+      document.getElementById('ready-btn').innerText = "已准备，等待其他玩家...";
+    };
 
     socket.on('your_word', data => {
-      document.getElementById('my-word').innerText = data.word;
+      document.getElementById('word-box').innerText = `你的词语是：${data.word}`;
+      document.getElementById('vote-section').style.display = 'block';
     });
 
     socket.on('update_players', data => {
       const list = document.getElementById('players');
-      list.innerHTML = data.players.map(p => `<div>${p}</div>`).join('');
-    });
+      list.innerHTML = '';
+      const voteTarget = document.getElementById('vote-target');
+      voteTarget.innerHTML = '';
+      data.players.forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = p;
+        list.appendChild(li);
 
-    socket.on('start_vote', data => {
-      const container = document.getElementById('vote-buttons');
-      container.innerHTML = '';
-      hasVoted = false;
-      data.players.forEach(player => {
-        const btn = document.createElement('button');
-        btn.className = 'vote-button';
-        btn.innerText = player;
-        btn.disabled = hasVoted || player === myName;
-        btn.onclick = () => {
-          if (!hasVoted) {
-            socket.emit('vote_undercover', { voted: player });
-            hasVoted = true;
-            btn.innerText += ' ✔️';
-            document.querySelectorAll('.vote-button').forEach(b => b.disabled = true);
-          }
-        };
-        container.appendChild(btn);
+        if (p !== username) {
+          const option = document.createElement('option');
+          option.value = p;
+          option.text = p;
+          voteTarget.appendChild(option);
+        }
       });
     });
 
-    socket.on('vote_result', data => {
-      const result = document.getElementById('result');
-      result.innerText = `被淘汰的是：${data.eliminated}`;
+    socket.on('eliminated', data => {
+      const msg = `玩家 ${data.player} 被淘汰`;
+      document.getElementById('result').innerText = msg;
     });
 
-    socket.on('game_result', data => {
-      const result = document.getElementById('result');
-      result.innerText = `游戏结束，${data.winner} 获胜！卧底是：${data.undercover}`;
+    socket.on('game_over', data => {
+      document.getElementById('result').innerText = `游戏结束：${data.result}`;
     });
+
+    function vote() {
+      const target = document.getElementById('vote-target').value;
+      if (target) {
+        socket.emit('vote', { target });
+        document.getElementById('vote-section').style.display = 'none';
+      }
+    }
   </script>
 </body>
 </html>
