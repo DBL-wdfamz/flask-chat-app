@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>谁是卧底</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #f7f7f7, #dfe9f3);
+      padding: 20px;
+      text-align: center;
+    }
+    h1 { color: #333; }
+    .player-list {
+      margin: 10px auto;
+      padding: 10px;
+      max-width: 600px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .vote-button {
+      padding: 8px 12px;
+      margin: 5px;
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .vote-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    #your-word {
+      margin: 10px auto;
+      font-size: 18px;
+      background-color: #ffeeba;
+      padding: 8px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    #result {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 15px;
+      color: #d33;
+    }
+    .back-button {
+      margin-top: 20px;
+      padding: 8px 16px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .back-button:hover {
+      background-color: #0b7dda;
+    }
+  </style>
+</head>
+<body>
+  <h1>谁是卧底</h1>
+
+  <div id="your-word">你拿到的词语是：<span id="my-word">（等待中...）</span></div>
+
+  <div class="player-list">
+    <h3>玩家列表</h3>
+    <div id="players"></div>
+  </div>
+
+  <div>
+    <h3>请选择要投票淘汰的玩家：</h3>
+    <div id="vote-buttons"></div>
+  </div>
+
+  <div id="result"></div>
+
+  <a href="/chat" class="back-button">返回聊天</a>
+
+  <script>
+    const socket = io();
+    const myName = "{{ username }}";
+    let hasVoted = false;
+
+    socket.emit('join_undercover');
+
+    socket.on('your_word', data => {
+      document.getElementById('my-word').innerText = data.word;
+    });
+
+    socket.on('update_players', data => {
+      const list = document.getElementById('players');
+      list.innerHTML = data.players.map(p => `<div>${p}</div>`).join('');
+    });
+
+    socket.on('start_vote', data => {
+      const container = document.getElementById('vote-buttons');
+      container.innerHTML = '';
+      hasVoted = false;
+      data.players.forEach(player => {
+        const btn = document.createElement('button');
+        btn.className = 'vote-button';
+        btn.innerText = player;
+        btn.disabled = hasVoted || player === myName;
+        btn.onclick = () => {
+          if (!hasVoted) {
+            socket.emit('vote_undercover', { voted: player });
+            hasVoted = true;
+            btn.innerText += ' ✔️';
+            document.querySelectorAll('.vote-button').forEach(b => b.disabled = true);
+          }
+        };
+        container.appendChild(btn);
+      });
+    });
+
+    socket.on('vote_result', data => {
+      const result = document.getElementById('result');
+      result.innerText = `被淘汰的是：${data.eliminated}`;
+    });
+
+    socket.on('game_result', data => {
+      const result = document.getElementById('result');
+      result.innerText = `游戏结束，${data.winner} 获胜！卧底是：${data.undercover}`;
+    });
+  </script>
+</body>
+</html>
