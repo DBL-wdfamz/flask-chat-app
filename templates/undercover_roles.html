@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>谁是卧底 - 查看词语</title>
+</head>
+<body>
+<h2>点击玩家名字查看词语</h2>
+<ul>
+    {% for name, word in roles %}
+        <li>
+            <details>
+                <summary>{{ name }}</summary>
+                <p>你的词语是：<strong>{{ word }}</strong></p>
+            </details>
+        </li>
+    {% endfor %}
+</ul>
+<a href="/undercover">重新开始</a>
+</body>
+</html>
