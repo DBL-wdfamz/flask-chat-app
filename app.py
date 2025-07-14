@@ -361,7 +361,7 @@ def handle_message(data):
     text = data['message']
     message = {'username': username, 'message': text}
     save_message(username, text)
-    emit('receive_message', message, broadcast=True)
+    emit('receive_message', message, to=None)
 
     # 如果是 AI 请求，额外触发 ask_ai
     if text.strip().lower().startswith('/ai'):
@@ -375,8 +375,8 @@ def ask_ai_task(prompt):
     ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
     save_message('🤖 AI机器人', ai_response)
 
-    socketio.emit('receive_message', ai_message, broadcast=True)
-    socketio.emit('ai_done', {}, broadcast=True)
+    socketio.emit('receive_message', ai_message, to=None)
+    socketio.emit('ai_done', {}, to=None)
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
