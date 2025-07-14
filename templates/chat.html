@@ -194,6 +194,10 @@
     chatbox.scrollTop = chatbox.scrollHeight;
   });
 
+  socket.on('ai_typing', function () {
+    showTypingIndicator();
+  });
+
   function sendMessage() {
     const input = document.getElementById('message');
     const msg = input.value.trim();
