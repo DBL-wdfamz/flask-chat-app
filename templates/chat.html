@@ -149,29 +149,6 @@
     .upload-btn:hover {
       background-color: #1976d2;
     }
-
-    .typing-indicator {
-      font-style: italic;
-      color: #888;
-      margin: 5px;
-      display: flex;
-      align-items: center;
-    }
-    .typing-dots span {
-      animation: blink 1.5s infinite;
-      margin-left: 2px;
-    }
-    .typing-dots span:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-    .typing-dots span:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-    @keyframes blink {
-      0% { opacity: 0.2; }
-      20% { opacity: 1; }
-      100% { opacity: 0.2; }
-    }
   </style>
 </head>
 <body>
@@ -184,23 +161,23 @@
   </div>
 
   <div id="chatbox"></div>
-  <div id="ai-typing"></div>
 
-  <div class="chat-input">
-    <input type="text" id="message" placeholder="输入消息..." autofocus>
-    <button onclick="sendMessage()">发送</button>
-    <label for="imageInput" class="upload-btn">📷 上传图片</label>
-    <input type="file" id="imageInput" accept="image/*" style="display:none;">
-  </div>
-
-  <div style="padding: 10px; text-align: center;">
-    <form action="{{ url_for('game') }}" method="get">
-      <button type="submit" style="padding: 10px 20px; font-size: 16px; border-radius: 6px; background-color: #4caf50; color: white; border: none; cursor: pointer;">
-        🎮 进入五子棋游戏
-      </button>
-    </form>
-  </div>
+<div class="chat-input">
+  <input type="text" id="message" placeholder="输入消息..." autofocus>
+  <button onclick="sendMessage()">发送</button>
+  <label for="imageInput" class="upload-btn">📷 上传图片</label>
+  <input type="file" id="imageInput" accept="image/*" style="display:none;">
 </div>
+
+<!-- 🎮 新增的进入游戏按钮 -->
+<div style="padding: 10px; text-align: center;">
+  <form action="{{ url_for('game') }}" method="get">
+    <button type="submit" style="padding: 10px 20px; font-size: 16px; border-radius: 6px; background-color: #4caf50; color: white; border: none; cursor: pointer;">
+      🎮 进入五子棋游戏
+    </button>
+  </form>
+</div>
+
 
 <script>
   const socket = io();
@@ -208,7 +185,6 @@
   const username = "{{ username }}";
 
   socket.on('receive_message', function(data) {
-    hideTypingIndicator();
     const msg = document.createElement('div');
     msg.classList.add('message');
     msg.classList.add(data.username === username ? 'mine' : 'other');
@@ -218,38 +194,12 @@
   });
 
   function sendMessage() {
-  const input = document.getElementById('message');
-  const msg = input.value.trim();
-  if (msg !== '') {
-    // 1. 显示用户自己的消息
-    socket.emit('send_message', {message: msg});
-
-    // 2. 如果是 AI 消息，显示进度提示
-    if (msg.startsWith('@ai')) {
-      const loading = document.createElement('div');
-      loading.classList.add('message', 'other');
-      loading.id = 'ai-thinking';
-      loading.innerHTML = `<strong>AI:</strong> 🤖 正在思考中...`;
-      chatbox.appendChild(loading);
-      chatbox.scrollTop = chatbox.scrollHeight;
+    const input = document.getElementById('message');
+    const msg = input.value.trim();
+    if (msg !== '') {
+      socket.emit('send_message', {message: msg});
+      input.value = '';
     }
-
-    input.value = '';
-  }
-}
-
-  function showTypingIndicator() {
-    const indicator = document.createElement('div');
-    indicator.classList.add('typing-indicator');
-    indicator.id = 'ai-typing';
-    indicator.innerHTML = `<strong>AI:</strong> <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>`;
-    chatbox.appendChild(indicator);
-    chatbox.scrollTop = chatbox.scrollHeight;
-  }
-
-  function hideTypingIndicator() {
-    const indicator = document.getElementById('ai-typing');
-    if (indicator) indicator.remove();
   }
 
   document.getElementById('message').addEventListener('keydown', function (e) {
