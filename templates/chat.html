@@ -195,13 +195,17 @@
   });
 
   socket.on('ai_typing', function () {
-    showTypingIndicator();
+    hideTypingIndicator();
   });
 
   function sendMessage() {
     const input = document.getElementById('message');
     const msg = input.value.trim();
     if (msg !== '') {
+      if (msg.slice(0, 3) == '/ai')
+      {
+        showTypingIndicator();
+      }
       socket.emit('send_message', {message: msg});
       input.value = '';
     }
