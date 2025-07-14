@@ -28,7 +28,7 @@ def ask_deepseek(prompt):
     payload = {
         "model": "deepseek-chat",
         "messages": [
-            {"role": "system", "content": "你是一个友好的 AI 聊天机器人"},
+            {"role": "system", "content": "你是一个友好的 AI 聊天机器人，需要输出单纯的文本，不要加任何格式标识符"},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.7
