@@ -363,21 +363,20 @@ def handle_message(data):
     save_message(username, text)
     emit('receive_message', message, broadcast=True)
 
-    # 如果以 /ai 开头，就调用 DeepSeek 机器人
+    # 如果是 AI 请求，额外触发 ask_ai
     if text.strip().lower().startswith('/ai'):
         prompt = text.strip()[3:].strip()
+        socketio.start_background_task(target=ask_ai_task, prompt=prompt)
 
-        # ① 通知前端显示 AI 正在输入动画
-        emit('ai_typing', {}, broadcast=False, to=request.sid)
+def ask_ai_task(prompt):
+    socketio.emit('ai_typing', {}, broadcast=True)
 
-        # ② 调用 AI 并生成回复
-        ai_response = ask_deepseek(prompt)
-        ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
-        save_message('🤖 AI机器人', ai_response)
+    ai_response = ask_deepseek(prompt)
+    ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
+    save_message('🤖 AI机器人', ai_response)
 
-        # ③ 广播 AI 回复
-        emit('receive_message', ai_message, broadcast=True)
-
+    socketio.emit('receive_message', ai_message, broadcast=True)
+    socketio.emit('ai_done', {}, broadcast=True)
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
