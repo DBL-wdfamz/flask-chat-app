@@ -215,10 +215,14 @@
     const indicator = document.getElementById('ai-typing');
     indicator.innerHTML = `<div class="typing-indicator"><strong>AI:</strong> <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
     chatbox.scrollTop = chatbox.scrollHeight;
+    document.getElementById('message').disabled = true;
+    document.querySelector('.chat-input button').disabled = true;
   }
 
   function hideTypingIndicator() {
     document.getElementById('ai-typing').innerHTML = '';
+    document.getElementById('message').disabled = false;
+    document.querySelector('.chat-input button').disabled = false;
   }
 
 
