@@ -358,18 +358,19 @@ def handle_connect():
 @socketio.on('send_message')
 def handle_message(data):
     username = session.get('username', '匿名')
-    text = data['message']
-    message = {'username': username, 'message': text}
-    save_message(username, text)
+    message_text = data['message']
+    message = {'username': username, 'message': message_text}
+    save_message(username, message_text)
     emit('receive_message', message, broadcast=True)
 
-    # 如果以 /ai 开头，就调用 DeepSeek 机器人
-    if text.strip().lower().startswith('/ai'):
-        prompt = text.strip()[3:].strip()
-        ai_response = ask_deepseek(prompt)
-        ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
-        save_message('🤖 AI机器人', ai_response)
-        emit('receive_message', ai_message, broadcast=True)
+    # AI 自动回复逻辑
+    if message_text.startswith('@ai'):
+        prompt = message_text[3:].strip()
+        reply = ask_deepseek(prompt)
+        ai_message = {'username': 'AI', 'message': reply}
+        save_message('AI', reply)
+        socketio.emit('receive_message', ai_message)
+
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
