@@ -6,7 +6,7 @@ import requests
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='threading')
 
 DB_PATH = os.environ.get('DB_PATH', 'chat.db')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_PATH', 'static/uploads')
@@ -363,13 +363,16 @@ def handle_message(data):
     save_message(username, message_text)
     emit('receive_message', message, broadcast=True)
 
-    # AI 自动回复逻辑
+    # AI 自动回复逻辑：用线程处理
     if message_text.startswith('@ai'):
         prompt = message_text[3:].strip()
-        reply = ask_deepseek(prompt)
-        ai_message = {'username': 'AI', 'message': reply}
-        save_message('AI', reply)
-        socketio.emit('receive_message', ai_message)
+        def generate_ai_reply():
+            reply = ask_deepseek(prompt)
+            ai_message = {'username': 'AI', 'message': reply}
+            save_message('AI', reply)
+            socketio.emit('receive_message', ai_message)
+
+        Thread(target=generate_ai_reply).start()
 
 
 if __name__ == '__main__':
