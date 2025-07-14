@@ -218,14 +218,25 @@
   });
 
   function sendMessage() {
-    const input = document.getElementById('message');
-    const msg = input.value.trim();
-    if (msg !== '') {
-      socket.emit('send_message', {message: msg});
-      input.value = '';
-      if (msg.startsWith('@ai')) showTypingIndicator();
+  const input = document.getElementById('message');
+  const msg = input.value.trim();
+  if (msg !== '') {
+    // 1. 显示用户自己的消息
+    socket.emit('send_message', {message: msg});
+
+    // 2. 如果是 AI 消息，显示进度提示
+    if (msg.startsWith('@ai')) {
+      const loading = document.createElement('div');
+      loading.classList.add('message', 'other');
+      loading.id = 'ai-thinking';
+      loading.innerHTML = `<strong>AI:</strong> 🤖 正在思考中...`;
+      chatbox.appendChild(loading);
+      chatbox.scrollTop = chatbox.scrollHeight;
     }
+
+    input.value = '';
   }
+}
 
   function showTypingIndicator() {
     const indicator = document.createElement('div');
