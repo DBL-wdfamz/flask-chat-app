@@ -167,6 +167,7 @@
   <button onclick="sendMessage()">发送</button>
   <label for="imageInput" class="upload-btn">📷 上传图片</label>
   <input type="file" id="imageInput" accept="image/*" style="display:none;">
+  <div id="ai-typing"></div>
 </div>
 
 <!-- 🎮 新增的进入游戏按钮 -->
@@ -201,6 +202,17 @@
       input.value = '';
     }
   }
+
+  function showTypingIndicator() {
+    const indicator = document.getElementById('ai-typing');
+    indicator.innerHTML = `<div class="typing-indicator"><strong>AI:</strong> <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
+    chatbox.scrollTop = chatbox.scrollHeight;
+  }
+
+  function hideTypingIndicator() {
+    document.getElementById('ai-typing').innerHTML = '';
+  }
+
 
   document.getElementById('message').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
