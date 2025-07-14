@@ -16,29 +16,34 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 
+def handle_ai_reply(question, username):
+    api_key = os.environ.get("DEEPSEEK_API_KEY")
+    if not api_key:
+        print("DeepSeek key missing")
+        return
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
-
-def ask_deepseek(prompt):
-    url = "https://api.deepseek.com/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    payload = {
+
+    data = {
         "model": "deepseek-chat",
         "messages": [
-            {"role": "system", "content": "你是一个友好的 AI 聊天机器人"},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7
+            {"role": "user", "content": question}
+        ]
     }
 
-    response = requests.post(url, headers=headers, json=payload)
-    if response.ok:
-        return response.json()['choices'][0]['message']['content']
-    else:
-        return "AI出错了，请稍后再试。"
+    try:
+        response = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=data)
+        answer = response.json()['choices'][0]['message']['content'].strip()
+
+        message = {'username': 'AI', 'message': answer}
+        save_message("AI", answer)
+        socketio.emit('receive_message', message, broadcast=True)
+
+    except Exception as e:
+        print("AI 错误:", e)
 
 
 
