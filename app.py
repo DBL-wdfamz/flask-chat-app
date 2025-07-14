@@ -365,11 +365,11 @@ def handle_message(data):
 
     # 如果是 AI 请求，额外触发 ask_ai
     if text.strip().lower().startswith('/ai'):
+        socketio.emit('ai_typing', {}, to=None)
         prompt = text.strip()[3:].strip()
         socketio.start_background_task(target=ask_ai_task, prompt=prompt)
 
 def ask_ai_task(prompt):
-    socketio.emit('ai_typing', {}, to=None)
 
     ai_response = ask_deepseek(prompt)
     ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
