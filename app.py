@@ -366,10 +366,18 @@ def handle_message(data):
     # 如果以 /ai 开头，就调用 DeepSeek 机器人
     if text.strip().lower().startswith('/ai'):
         prompt = text.strip()[3:].strip()
+
+        # ① 通知前端显示 AI 正在输入动画
+        emit('ai_typing', {}, broadcast=False, to=request.sid)
+
+        # ② 调用 AI 并生成回复
         ai_response = ask_deepseek(prompt)
         ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
         save_message('🤖 AI机器人', ai_response)
+
+        # ③ 广播 AI 回复
         emit('receive_message', ai_message, broadcast=True)
+
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
