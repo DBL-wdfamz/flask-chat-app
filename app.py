@@ -17,7 +17,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-e32ec7d2688d4c348df6c9f3260477d4")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 
 def ask_deepseek(prompt):
     url = "https://api.deepseek.com/v1/chat/completions"
