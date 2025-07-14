@@ -6,7 +6,7 @@ import requests
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
-socketio = SocketIO(app, async_mode='threading')
+socketio = SocketIO(app)
 
 DB_PATH = os.environ.get('DB_PATH', 'chat.db')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_PATH', 'static/uploads')
@@ -358,25 +358,21 @@ def handle_connect():
 @socketio.on('send_message')
 def handle_message(data):
     username = session.get('username', '匿名')
-    message_text = data['message']
-    message = {'username': username, 'message': message_text}
-    save_message(username, message_text)
+    text = data['message']
+    message = {'username': username, 'message': text}
+    save_message(username, text)
     emit('receive_message', message, broadcast=True)
 
-    # AI 自动回复逻辑：用线程处理
-    if message_text.startswith('@ai'):
-        prompt = message_text[3:].strip()
-        def generate_ai_reply():
-            reply = ask_deepseek(prompt)
-            ai_message = {'username': 'AI', 'message': reply}
-            save_message('AI', reply)
-            socketio.emit('receive_message', ai_message)
-
-        Thread(target=generate_ai_reply).start()
-
+    # 如果以 /ai 开头，就调用 DeepSeek 机器人
+    if text.strip().lower().startswith('/ai'):
+        prompt = text.strip()[3:].strip()
+        ai_response = ask_deepseek(prompt)
+        ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
+        save_message('🤖 AI机器人', ai_response)
+        emit('receive_message', ai_message, broadcast=True)
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     init_db()
     port = int(os.environ.get("PORT", 5000))
-    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=port)
