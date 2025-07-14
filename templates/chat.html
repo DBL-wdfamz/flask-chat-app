@@ -222,6 +222,13 @@
     document.querySelector('.chat-input button').disabled = false;
   }
 
+  socket.on('ai_typing', function () {
+    showTypingIndicator();
+  });
+  
+  socket.on('ai_done', function () {
+    hideTypingIndicator();
+  });
 
   document.getElementById('message').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
