@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, s
 from flask_socketio import SocketIO, emit
 from werkzeug.utils import secure_filename
 import os, re, sqlite3, io
+import requests
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -12,6 +13,34 @@ UPLOAD_FOLDER = os.environ.get('UPLOAD_PATH', 'static/uploads')
 MAX_HISTORY = 100
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+
+
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-e32ec7d2688d4c348df6c9f3260477d4")
+
+def ask_deepseek(prompt):
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": "你是一个友好的 AI 聊天机器人"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    if response.ok:
+        return response.json()['choices'][0]['message']['content']
+    else:
+        return "AI出错了，请稍后再试。"
+
+
 
 # 记录棋盘、玩家顺序、回合信息
 game_state = {
@@ -329,9 +358,18 @@ def handle_connect():
 @socketio.on('send_message')
 def handle_message(data):
     username = session.get('username', '匿名')
-    message = {'username': username, 'message': data['message']}
-    save_message(username, data['message'])
+    text = data['message']
+    message = {'username': username, 'message': text}
+    save_message(username, text)
     emit('receive_message', message, broadcast=True)
+
+    # 如果以 /ai 开头，就调用 DeepSeek 机器人
+    if text.strip().lower().startswith('/ai'):
+        prompt = text.strip()[3:].strip()
+        ai_response = ask_deepseek(prompt)
+        ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
+        save_message('🤖 AI机器人', ai_response)
+        emit('receive_message', ai_message, broadcast=True)
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
