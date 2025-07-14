@@ -16,34 +16,29 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 
-def handle_ai_reply(question, username):
-    api_key = os.environ.get("DEEPSEEK_API_KEY")
-    if not api_key:
-        print("DeepSeek key missing")
-        return
 
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+
+def ask_deepseek(prompt):
+    url = "https://api.deepseek.com/v1/chat/completions"
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
         "Content-Type": "application/json"
     }
-
-    data = {
+    payload = {
         "model": "deepseek-chat",
         "messages": [
-            {"role": "user", "content": question}
-        ]
+            {"role": "system", "content": "你是一个友好的 AI 聊天机器人"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
     }
 
-    try:
-        response = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=data)
-        answer = response.json()['choices'][0]['message']['content'].strip()
-
-        message = {'username': 'AI', 'message': answer}
-        save_message("AI", answer)
-        socketio.emit('receive_message', message, broadcast=True)
-
-    except Exception as e:
-        print("AI 错误:", e)
+    response = requests.post(url, headers=headers, json=payload)
+    if response.ok:
+        return response.json()['choices'][0]['message']['content']
+    else:
+        return "AI出错了，请稍后再试。"
 
 
 
@@ -363,17 +358,18 @@ def handle_connect():
 @socketio.on('send_message')
 def handle_message(data):
     username = session.get('username', '匿名')
-    message_text = data['message']
-
-    # ✅ 先广播原始消息
-    message = {'username': username, 'message': message_text}
-    save_message(username, message_text)
+    text = data['message']
+    message = {'username': username, 'message': text}
+    save_message(username, text)
     emit('receive_message', message, broadcast=True)
 
-    # 如果是AI请求
-    if message_text.strip().startswith('@ai'):
-        question = message_text.replace('@ai', '', 1).strip()
-        threading.Thread(target=handle_ai_reply, args=(question, username)).start()
+    # 如果以 /ai 开头，就调用 DeepSeek 机器人
+    if text.strip().lower().startswith('/ai'):
+        prompt = text.strip()[3:].strip()
+        ai_response = ask_deepseek(prompt)
+        ai_message = {'username': '🤖 AI机器人', 'message': ai_response}
+        save_message('🤖 AI机器人', ai_response)
+        emit('receive_message', ai_message, broadcast=True)
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
